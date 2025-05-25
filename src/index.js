@@ -1,9 +1,6 @@
 import { html, render } from "lit-html";
+import { serial } from "./serial.js";
 
-let port;
-let reader;
-let writer;
-let reading = false;
 let ledStatus = "Unknown";
 let lastRow = [];
 
@@ -13,53 +10,6 @@ function generateRandomPattern() {
     pattern.push(Math.round(Math.random()));
   }
   return pattern;
-}
-
-async function connectToDevice() {
-  try {
-    port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 115200 });
-    reader = port.readable.getReader();
-    writer = port.writable.getWriter();
-    startReading();
-  } catch (error) {
-    console.error("Error connecting to device:", error);
-  }
-}
-
-async function startReading() {
-  reading = true;
-  let currentString = "";
-  while (reading) {
-    try {
-      const { value, done } = await reader.read();
-      if (done) {
-        console.log("Reader stream closed");
-        reader.releaseLock();
-        break;
-      }
-
-      if (value) {
-        for (let i = 0; i < value.length; i++) {
-          const byte = value[i];
-          const log = String.fromCharCode(byte);
-          currentString += log;
-          if (log === "\n") {
-            try {
-              const jsonData = JSON.parse(currentString);
-              processJSON(jsonData);
-            } catch (error) {
-              console.error("Error parsing JSON string:", currentString);
-            }
-            currentString = "";
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error reading from device:", error);
-      break;
-    }
-  }
 }
 
 function displayPattern(pattern) {
@@ -99,50 +49,14 @@ function processJSON(jsonData) {
   }
 }
 
-async function writeJSON(jsonData) {
-  if (!writer) {
-    console.error("Not connected to device");
-    return;
-  }
-  try {
-    console.debug("Sending message:", jsonData);
-    const encoder = new TextEncoder();
-    const encodedMessage = encoder.encode(JSON.stringify(jsonData));
-    await writer.write(encodedMessage);
-  } catch (error) {
-    console.error("Error writing to device:", error);
-  }
-}
-
 async function writePatternRow() {
   const rowData = { msg_type: "row", row: generateRandomPattern() };
-  await writeJSON(rowData);
+  await serial.writeJSON(rowData);
 }
 
 async function toggleLED(state) {
   const ledData = { msg_type: "led", state: state };
-  await writeJSON(ledData);
-}
-
-async function disconnect() {
-  reading = false;
-  try {
-    if (reader) {
-      await reader.cancel();
-      await reader.releaseLock();
-      reader = null;
-    }
-    if (writer) {
-      await writer.close();
-      writer = null;
-    }
-    if (port) {
-      await port.close();
-      port = null;
-    }
-  } catch (error) {
-    console.error("Error during disconnect:", error);
-  }
+  await serial.writeJSON(ledData);
 }
 
 function miscUI() {
@@ -150,13 +64,13 @@ function miscUI() {
     <div class="led-controls">
       <button
         @click=${() => toggleLED("ON")}
-        ?disabled=${!port}
+        ?disabled=${!serial.connected()}
         class="btn btn-xs btn-accent">
         Turn LED ON
       </button>
       <button
         @click=${() => toggleLED("OFF")}
-        ?disabled=${!port}
+        ?disabled=${!serial.connected()}
         class="btn btn-xs btn-accent">
         Turn LED OFF
       </button>
@@ -164,7 +78,7 @@ function miscUI() {
     <div class="pattern-controls">
       <button
         @click=${() => writePatternRow()}
-        ?disabled=${!port}
+        ?disabled=${!serial.connected()}
         class="btn btn-xs btn-primary">
         Write Pattern Row
       </button>
@@ -174,13 +88,15 @@ function miscUI() {
 
 const connectedBtns = html`
   <span id="status" class="text-sm">Connected!</span>
-  <button @click=${disconnect} class="btn btn-xs btn-neutral">
+  <button @click=${serial.disconnect} class="btn btn-xs btn-neutral">
     Disconnect
   </button>
 `;
 
 const disconnectedBtns = html`
-  <button @click=${connectToDevice} class="btn btn-xs btn-accent">
+  <button
+    @click=${() => serial.connect(processJSON)}
+    class="btn btn-xs btn-accent">
     Connect to Machine
   </button>
 `;
@@ -192,7 +108,7 @@ function mainUI() {
         class="bg-primary text-primary-content flex items-center shadow-sm gap-1 p-1">
         <span class="font-bold">Silver Reed/Write Controller</span>
         <div class="flex-1"></div>
-        ${port ? connectedBtns : disconnectedBtns}
+        ${serial.connected() ? connectedBtns : disconnectedBtns}
       </div>
       ${miscUI()}
     </div>
@@ -204,8 +120,6 @@ function r() {
   window.requestAnimationFrame(r);
 }
 
-function init() {
+document.addEventListener("DOMContentLoaded", () => {
   r();
-}
-
-document.addEventListener("DOMContentLoaded", init);
+});
