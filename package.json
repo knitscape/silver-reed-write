@@ -1,9 +1,17 @@
 {
+  "name": "silver-reed-write",
+  "type": "module",
+  "author": "branchwelder",
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.7",
     "lit-html": "^3.3.0",
+    "tailwindcss": "^4.1.7",
     "vite": "^6.3.5"
   },
   "scripts": {
     "dev": "vite"
+  },
+  "devDependencies": {
+    "daisyui": "^5.0.37"
   }
 }

@@ -145,33 +145,62 @@ async function disconnect() {
   }
 }
 
-function r() {
-  render(
-    html`
-      <div>
-        <h1>Silver Reed/Write Controller</h1>
-        <button @click=${connectToDevice}>Connect to Device</button>
-        <button @click=${disconnect}>Disconnect</button>
-        <div id="status">Status: ${port ? "Connected" : "Disconnected"}</div>
-        <div id="led-status">${ledStatus}</div>
-        <div class="led-controls">
-          <button @click=${() => toggleLED("ON")} ?disabled=${!port}>
-            Turn LED ON
-          </button>
-          <button @click=${() => toggleLED("OFF")} ?disabled=${!port}>
-            Turn LED OFF
-          </button>
-        </div>
-        <div class="pattern-controls">
-          <button @click=${() => writePatternRow()} ?disabled=${!port}>
-            Write Pattern Row
-          </button>
-        </div>
-        <div id="pattern-display"></div>
+function miscUI() {
+  return html`<div id="led-status">${ledStatus}</div>
+    <div class="led-controls">
+      <button
+        @click=${() => toggleLED("ON")}
+        ?disabled=${!port}
+        class="btn btn-xs btn-accent">
+        Turn LED ON
+      </button>
+      <button
+        @click=${() => toggleLED("OFF")}
+        ?disabled=${!port}
+        class="btn btn-xs btn-accent">
+        Turn LED OFF
+      </button>
+    </div>
+    <div class="pattern-controls">
+      <button
+        @click=${() => writePatternRow()}
+        ?disabled=${!port}
+        class="btn btn-xs btn-primary">
+        Write Pattern Row
+      </button>
+    </div>
+    <div id="pattern-display"></div>`;
+}
+
+const connectedBtns = html`
+  <span id="status" class="text-sm">Connected!</span>
+  <button @click=${disconnect} class="btn btn-xs btn-neutral">
+    Disconnect
+  </button>
+`;
+
+const disconnectedBtns = html`
+  <button @click=${connectToDevice} class="btn btn-xs btn-accent">
+    Connect to Machine
+  </button>
+`;
+
+function mainUI() {
+  return html`
+    <div>
+      <div
+        class="bg-primary text-primary-content flex items-center shadow-sm gap-1 p-1">
+        <span class="font-bold">Silver Reed/Write Controller</span>
+        <div class="flex-1"></div>
+        ${port ? connectedBtns : disconnectedBtns}
       </div>
-    `,
-    document.body
-  );
+      ${miscUI()}
+    </div>
+  `;
+}
+
+function r() {
+  render(mainUI(), document.body);
   window.requestAnimationFrame(r);
 }
 
