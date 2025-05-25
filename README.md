@@ -14,6 +14,8 @@ controller for the silver reed sk840
   - the last two pages of this service manual for the 500 series are helpful
     (pin numbers are not the same as sk840)
     https://mkmanuals.com/downloadable/download/sample/sample_id/1479/
+- micropython
+  - https://docs.micropython.org/en/latest/rp2/quickref.html
 
 ## Implementation Notes
 

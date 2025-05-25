@@ -1,55 +1,71 @@
-from machine import Pin, UART
-import time
-import os
 import sys
 import select
+import time
+import json
 
+led = machine.Pin("LED", machine.Pin.OUT)
+last_row = []
 
+pollObj = select.poll()
+pollObj.register(sys.stdin, select.POLLIN)
 
-# Initialize LED on GPIO2 (built-in LED on most ESP8266 boards)
-led = Pin(2, Pin.OUT)
-led_state = False  # Track LED state in a variable
-led.value(1)  # Turn LED off initially (ESP8266 built-in LED is active low)
+def set_led(msg):
+    state = msg["state"]
+    if state == "ON":
+        led.value(0)
+    elif state == "OFF":
+        led.value(1)
+    else:
+        send_error("LED state not supported")
+    send_state()
+      
+def set_next_row(msg):
+    global last_row
+    last_row = msg["row"]
+    send_echo(last_row)
+    send_state()
+      
+def send_state():
+    current_state = {"led": led.value(), "last_row": last_row }
+    send_message("state", current_state)
+        
+def send_error(error_msg):
+    send_message("error", error_msg)
+    
+def send_echo(msg):
+    send_message("echo", msg)
+    
+def send_message(message_type, message_content):
+   json_msg = {"msg_type": message_type, "msg": message_content}
+   msg = json.dumps(json_msg)
+   print(msg)
+    
+def process_message(msg):
+    msg_type = msg["msg_type"]
+    if msg_type == "led":
+        set_led(msg)
+    elif msg_type == "row":
+        set_next_row(msg)
+    else:
+        send_error("unsupported message type")
+            
 
-# Initialize UART with minimal buffer
-uart = UART(0, 115200)  # UART0, 115200 baud rate
-uart.init(115200, bits=8, parity=None, stop=1, rxbuf=64)  # Reduced buffer size
-uart.write("ESP8266 initialized\n")
-
-def set_led(state):
-    global led_state
-    led_state = state
-    led.value(0 if state else 1)  # LED is active low
-    return "LED ON" if state else "LED OFF"
-
-# Message format: "LED:ON" or "LED:OFF"
-def handle_message(message):
-    message = message.strip().upper()  # Normalize message
-    if message == "LED:ON":
-        return set_led(True)
-    elif message == "LED:OFF":
-        return set_led(False)
-    return "Unknown"
-
-# Main loop
-last_status_time = 0
+def read_until_newline():
+    msg = ''
+    
+    if not pollObj.poll(0):
+        return
+    
+    while pollObj.poll(0):
+        ch = sys.stdin.read(1)
+        if ch=='\n':
+            break
+        msg += ch
+        
+    json_msg = json.loads(msg)
+    process_message(json_msg)
+    
 
 while True:
-    try:
-        # Check for incoming messages from stdin
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-            message = sys.stdin.readline().strip()
-            if message:
-                response = handle_message(message)
-                uart.write(response + '\n')
-        
-        # Send status message every second
-        current_time = time.ticks_ms()
-        if time.ticks_diff(current_time, last_status_time) >= 1000:
-            status = "ON" if led_state else "OFF"
-            uart.write(f"Status:{status}\n")
-            last_status_time = current_time
-        
-        time.sleep(0.01)  # Small delay to prevent CPU hogging
-    except Exception as e:
-        time.sleep(1)  # Wait a bit before retrying
+    read_until_newline()
+    time.sleep_ms(10)

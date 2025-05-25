@@ -5,26 +5,25 @@ let reader;
 let writer;
 let reading = false;
 let ledStatus = "Unknown";
+let lastRow = [];
+
+function generateRandomPattern() {
+  const pattern = [];
+  for (let i = 0; i < 200; i++) {
+    pattern.push(Math.round(Math.random()));
+  }
+  return pattern;
+}
 
 async function connectToDevice() {
   try {
-    // Request port with specific filters if needed
     port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 115200 }); // Match ESP8266 baud rate
-
-    // const textDecoder = new TextDecoderStream();
-    // port.readable.pipeTo(textDecoder.writable);
+    await port.open({ baudRate: 115200 });
     reader = port.readable.getReader();
-
-    //const textEncoder = new TextEncoderStream();
-    // textEncoder.readable.pipeTo(port.writable);
     writer = port.writable.getWriter();
-
     startReading();
-    return true;
   } catch (error) {
     console.error("Error connecting to device:", error);
-    return false;
   }
 }
 
@@ -41,25 +40,21 @@ async function startReading() {
       }
 
       if (value) {
-        console.log("received value:", value);
         for (let i = 0; i < value.length; i++) {
           const byte = value[i];
-          console.log("byte:", byte, typeof byte);
           const log = String.fromCharCode(byte);
           currentString += log;
           if (log === "\n") {
-            console.log("received:", currentString);
+            try {
+              const jsonData = JSON.parse(currentString);
+              processJSON(jsonData);
+            } catch (error) {
+              console.error("Error parsing JSON string:", currentString);
+            }
             currentString = "";
           }
         }
       }
-
-      // Handle received data
-      // const message = value.trim();
-      // console.log("received:", value);
-      // if (message.startsWith("Status:")) {
-      // ledStatus = message;
-      // }
     } catch (error) {
       console.error("Error reading from device:", error);
       break;
@@ -67,29 +62,66 @@ async function startReading() {
   }
 }
 
-async function writeToDevice() {
+function displayPattern(pattern) {
+  // Create a canvas element to display the pattern
+  const canvas = document.createElement("canvas");
+  console.log("pattern", pattern);
+  canvas.width = pattern.length;
+  canvas.height = 1;
+  const ctx = canvas.getContext("2d");
+
+  // Draw the pattern - black for 0, white for 1
+  for (let i = 0; i < pattern.length; i++) {
+    ctx.fillStyle = pattern[i] === 0 ? "black" : "white";
+    ctx.fillRect(i, 0, 1, 1);
+  }
+
+  // Update or create the image display
+  const patternDisplay = document.getElementById("pattern-display");
+  patternDisplay.appendChild(canvas);
+}
+
+function processState(jsonData) {
+  console.log("processState", jsonData);
+  ledStatus = jsonData.led === 0 ? "ON" : "OFF";
+  lastRow = jsonData.last_row;
+  displayPattern(lastRow);
+}
+
+function processJSON(jsonData) {
+  const msg_type = jsonData.msg_type;
+  if (msg_type === "state") {
+    processState(jsonData.msg);
+  } else if (msg_type === "echo") {
+    console.log("Received echo:", jsonData.msg);
+  } else if (msg_type === "error") {
+    console.error("Error from device:", jsonData.msg);
+  }
+}
+
+async function writeJSON(jsonData) {
   if (!writer) {
     console.error("Not connected to device");
     return;
   }
   try {
-    const message = "t\r\n";
-    console.log("Sending message:", message);
-    // Convert string to Uint8Array for proper serial transmission
+    console.debug("Sending message:", jsonData);
     const encoder = new TextEncoder();
-    const encodedMessage = encoder.encode(message);
-    console.log("encodedMessage:", encodedMessage);
+    const encodedMessage = encoder.encode(JSON.stringify(jsonData));
     await writer.write(encodedMessage);
-    console.log("Message sent successfully");
   } catch (error) {
     console.error("Error writing to device:", error);
   }
 }
 
+async function writePatternRow() {
+  const rowData = { msg_type: "row", row: generateRandomPattern() };
+  await writeJSON(rowData);
+}
+
 async function toggleLED(state) {
-  await writeToDevice();
-  // Add a small delay to ensure message is processed
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  const ledData = { msg_type: "led", state: state };
+  await writeJSON(ledData);
 }
 
 async function disconnect() {
@@ -130,6 +162,12 @@ function r() {
             Turn LED OFF
           </button>
         </div>
+        <div class="pattern-controls">
+          <button @click=${() => writePatternRow()} ?disabled=${!port}>
+            Write Pattern Row
+          </button>
+        </div>
+        <div id="pattern-display"></div>
       </div>
     `,
     document.body
