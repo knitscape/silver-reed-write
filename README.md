@@ -8,6 +8,7 @@ controller for the silver reed sk840
 - Prior projects
   - https://github.com/MathKnitting/silverreed-firmware
   - https://github.com/romkal/silverduino
+  - https://github.com/romkal/silverduino-board
 - Documentation/manuals
   - EC1 parts catalog:
     https://mkmanuals.com/downloadable/download/sample/sample_id/1483/
