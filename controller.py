@@ -12,13 +12,26 @@ DIRECTION = Pin(26, Pin.IN)     # (DIN 5) HOK: Carriage Direction. Low = To righ
 
 # Global variables
 was_in_knitting_range = None
-counter = 0
 last_clock_pulse = None
+last_direction = None  # Direction that the carriage is currently moving
+needle_counter = 0
 
 
-current_direction = "UNKNOWN"  # Direction that the carriage is currently moving
-pattern_needle = 0        # Which needle inside the cams we're currently on
-last_dir = None
+
+
+# Pattern data for testing- 20 needles wide, repeating pattern
+pattern = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 1
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 2
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 3
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 4
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 5
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 6
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 7
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]   # Row 8
+]
+current_row = 0
+
 
 
 def is_in_knitting_range():
@@ -38,50 +51,73 @@ def saw_needle():
     return False
 
 def print_state():
-    print(f"Inside cams: {is_in_knitting_range()}, Needle: {counter}")
+    print(f"Inside cams: {is_in_knitting_range()}, Needle: {needle_counter}")
 
  
-def check_if_exited_knitting_range(current_in_range):
+def check_knitting_range(current_in_range):
     global was_in_knitting_range
-    global counter
+    global needle_counter
+    global current_row
+
 
     if current_in_range != was_in_knitting_range:
+        current_direction = check_direction_change()
+
         if not current_in_range: 
-            # we exited the knitting range
-            OUT.value(0) # ensure that the solenoid is off
             # Here is where we should report that we exited the knitting range
-            print("Exited knitting range")
-            counter = 0
+            print(f"Exited knitting range, carriage is on the {current_direction}.")
+
+            # Increment the row
+            current_row += 1
+            if current_row >= len(pattern):
+                current_row = 0
+            print(f"Current row: {current_row}")
+            needle_counter = 0
+        elif current_in_range:
+            print(f"Entered knitting range, direction: {current_direction}")
 
     was_in_knitting_range = current_in_range
 
+def read_current_direction():
+    if DIRECTION.value() == 1:
+        return "left"
+    else:
+        return "right"
+
+
+def check_direction_change():
+    global last_direction
+    current_direction = read_current_direction()
+    if current_direction != last_direction:
+        last_direction = current_direction
+        print(f"Direction changed to: {current_direction}")
+
+    return current_direction
+
+
 def main_loop():
-    global counter
+    global needle_counter
+    global current_row
+
     in_range = is_in_knitting_range()
+    check_knitting_range(in_range)
 
-    check_if_exited_knitting_range(in_range)
+    if in_range:
+        check_direction_change()
 
-    if in_range and saw_needle():
-        counter += 1
-        if (counter % 3) == 0:  # for testing just slip every third needle
-            OUT.value(1)
-        else:
-            OUT.value(0)
+        if saw_needle():
+            pattern_index = needle_counter % len(pattern[current_row])
 
-        print_state()
+            if pattern[current_row][pattern_index] == 1:
+                OUT.value(1)
+            else:
+                OUT.value(0) 
+        
+            needle_counter += 1
 
-        # dir_val = DIRECTION.value()
-        # # Check for direction change
-        # if dir_val != last_dir:
-        #     print("\n")
-        #     if dir_val == 1:
-        #         current_direction = "LEFT"
-        #         inside_cams = False
-        #     elif dir_val == 0:
-        #         current_direction = "RIGHT"
-        #         inside_cams = False
-        #     pattern_needle = 0
-        # last_dir = dir_val
+    elif not in_range and saw_needle():
+        if OUT.value() == 1:
+            OUT.value(0) # ensure that the solenoid is off outside of the knitting range
         
 
 
