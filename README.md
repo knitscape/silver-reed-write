@@ -21,7 +21,7 @@ controller for the silver reed sk840
 
 ## Implementation Notes
 
-Control board should:
+The board Control board should:
 
 - signal when a row has ended, and the measured distance between point cams
 - signal when a row has started, and what direction
