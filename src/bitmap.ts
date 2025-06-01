@@ -26,11 +26,97 @@ export function createEmptyBitmap(
   };
 }
 
+export function tileBitmap(
+  bitmap: Bitmap,
+  baseBitmap: Bitmap,
+  center: boolean = false
+) {
+  // First update the palette by copying colors from base bitmap
+  bitmap.palette = [...baseBitmap.palette];
+
+  // Calculate offset for centering
+  const xOffset = center
+    ? Math.floor((bitmap.width - baseBitmap.width) / 2)
+    : 0;
+
+  console.log(xOffset);
+
+  for (let y = 0; y < bitmap.height; y++) {
+    for (let x = 0; x < bitmap.width; x++) {
+      // Get corresponding position in base bitmap by wrapping coordinates
+      // Add offset before modulo to shift the pattern
+      const baseX =
+        (((x - xOffset) % baseBitmap.width) + baseBitmap.width) %
+        baseBitmap.width;
+      const baseY = y % baseBitmap.height;
+
+      // Get color index from base bitmap
+      const baseIndex = paletteIndexAt(baseBitmap, [baseX, baseY]);
+      if (baseIndex === -1) continue;
+
+      // Modify bitmap directly
+      bitmap.data[x + y * bitmap.width] = baseIndex;
+    }
+  }
+}
+
+export function stampBitmap(
+  targetBitmap: Bitmap,
+  stampBitmap: Bitmap,
+  [x, y]: Position
+) {
+  // First update the palette by copying any new colors from stamp bitmap
+  const paletteMap = new Map<number, number>();
+  for (let i = 0; i < stampBitmap.palette.length; i++) {
+    const color = stampBitmap.palette[i];
+    const existingIndex = targetBitmap.palette.findIndex(
+      (c) => c[0] === color[0] && c[1] === color[1] && c[2] === color[2]
+    );
+    if (existingIndex === -1) {
+      paletteMap.set(i, targetBitmap.palette.length);
+      targetBitmap.palette.push(color);
+    } else {
+      paletteMap.set(i, existingIndex);
+    }
+  }
+
+  // Copy pixels from stamp to target bitmap
+  for (let sy = 0; sy < stampBitmap.height; sy++) {
+    for (let sx = 0; sx < stampBitmap.width; sx++) {
+      const targetX = x + sx;
+      const targetY = y + sy;
+
+      // Skip if outside target bounds
+      if (
+        targetX < 0 ||
+        targetX >= targetBitmap.width ||
+        targetY < 0 ||
+        targetY >= targetBitmap.height
+      ) {
+        continue;
+      }
+
+      const stampIndex = paletteIndexAt(stampBitmap, [sx, sy]);
+      if (stampIndex === -1) continue;
+
+      const targetIndex = paletteMap.get(stampIndex);
+      if (targetIndex === undefined) continue;
+
+      // Modify bitmap directly
+      targetBitmap.data[targetX + targetY * targetBitmap.width] = targetIndex;
+    }
+  }
+}
+
 export function paletteIndexAt(bitmap: Bitmap, [x, y]: Position) {
   if (x > bitmap.width - 1 || x < 0 || y > bitmap.height - 1 || y < 0) {
     return -1;
   }
-  return bitmap.data.at(x + y * bitmap.width);
+  const index = bitmap.data.at(x + y * bitmap.width);
+  if (index === undefined) {
+    return -1;
+  }
+  return index;
 }
 
 function brush(bitmap: Bitmap, [x, y]: Position, paletteIndex: number) {

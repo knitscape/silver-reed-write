@@ -1,6 +1,11 @@
 import { html, render } from "lit-html";
 import { serial } from "./serial";
-import { setBasePattern, setKnittingState, setMachineState } from "./slice";
+import {
+  setBasePattern,
+  setKnittingState,
+  setMachineState,
+  setPatternConfig,
+} from "./slice";
 import { createBitmapFromImage } from "./bitmap";
 
 import { store } from "./store";
@@ -89,12 +94,19 @@ function patternConfig() {
           <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Repeat</legend>
             <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
+              <input
+                type="checkbox"
+                class="toggle toggle-xs"
+                ?checked=${patternConfig.repeat_horizontal}
+                @change=${(e: Event) => {
+                  store.dispatch(
+                    setPatternConfig({
+                      ...patternConfig,
+                      repeat_horizontal: (e.target as HTMLInputElement).checked,
+                    })
+                  );
+                }} />
               Horizontally
-            </label>
-            <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              Vertically
             </label>
           </fieldset>
           <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
@@ -115,18 +127,41 @@ function patternConfig() {
                 min="0"
                 title="Must be between be 1 to 10" />
             </label>
-          </fieldset>
+          </fieldset> -->
           <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Misc</legend>
             <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              Center
+              <input
+                type="checkbox"
+                class="toggle toggle-xs"
+                ?checked=${patternConfig.centerX}
+                @change=${(e: Event) => {
+                  store.dispatch(
+                    setPatternConfig({
+                      ...patternConfig,
+                      centerX: (e.target as HTMLInputElement).checked,
+                    })
+                  );
+                }} />
+              Center X
             </label>
             <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              End needles
+              <input
+                type="checkbox"
+                class="toggle toggle-xs"
+                ?checked=${patternConfig.endNeedleSelection}
+                @change=${(e: Event) => {
+                  store.dispatch(
+                    setPatternConfig({
+                      ...patternConfig,
+                      endNeedleSelection: (e.target as HTMLInputElement)
+                        .checked,
+                    })
+                  );
+                }} />
+              End needle selection
             </label>
-          </fieldset> -->
+          </fieldset>
         </div>
         <div class="flex flex-row gap-1">
           <fieldset class="fieldset border-base-300 border-1 p-1">
