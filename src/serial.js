@@ -92,3 +92,11 @@ export const serial = {
   connected: () => (port ? true : false),
   writeJSON,
 };
+
+export async function writePatternRow(row) {
+  const rowData = {
+    msg_type: "row",
+    row: row,
+  };
+  await serial.writeJSON(rowData);
+}

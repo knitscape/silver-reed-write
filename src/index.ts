@@ -1,70 +1,29 @@
 import { html, render } from "lit-html";
 import { serial } from "./serial";
-import { initialState, PatternConfig } from "./state";
-import {
-  Bitmap,
-  createBitmapFromImage,
-  createEmptyBitmap,
-  drawBitmapToCanvas,
-  fitCanvasToParent,
-  getRow,
-} from "./bitmap";
+import { setBasePattern, setKnittingState, setMachineState } from "./slice";
+import { createBitmapFromImage } from "./bitmap";
 
-const GLOBAL_STATE = initialState;
-
-function highlightRow(
-  row: number,
-  highlightColor: string = "rgba(255, 0, 0, 0.3)",
-  bottomUp: boolean = true
-) {
-  const canvas = document.getElementById("pattern-canvas") as HTMLCanvasElement;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    console.error("Could not get context");
-    return;
-  }
-  ctx.fillStyle = highlightColor;
-  if (bottomUp) {
-    ctx.fillRect(0, canvas.height - row - 1, canvas.width, 1);
-  } else {
-    ctx.fillRect(0, row, canvas.width, 1);
-  }
-}
-
-function drawPattern() {
-  if (!GLOBAL_STATE.computedPattern) {
-    return;
-  }
-  console.log("drawPattern", GLOBAL_STATE.computedPattern);
-  const canvas = document.getElementById("pattern-canvas") as HTMLCanvasElement;
-  drawBitmapToCanvas(canvas, GLOBAL_STATE.computedPattern);
-  canvas.style.width = `${GLOBAL_STATE.computedPattern.width * 20}px`;
-  canvas.style.height = `${GLOBAL_STATE.computedPattern.height * 20}px`;
-  if (GLOBAL_STATE.knittingState.patterning) {
-    highlightRow(GLOBAL_STATE.knittingState.currentRow);
-  }
-}
+import { store } from "./store";
 
 async function processState(jsonData) {
   // console.log("processState", jsonData);
-  GLOBAL_STATE.machineState.carriageSide = jsonData.direction;
-  // GLOBAL_STATE.pattern_width = jsonData.cam_width;
+  const state = store.getState();
 
-  if (GLOBAL_STATE.knittingState.patterning) {
-    // increment the current row
-    GLOBAL_STATE.knittingState.currentRow =
-      GLOBAL_STATE.knittingState.currentRow + 1;
-    if (
-      GLOBAL_STATE.knittingState.currentRow >=
-      GLOBAL_STATE.computedPattern!.height
-    ) {
-      GLOBAL_STATE.knittingState.currentRow = 0; // wrap around to the first row
-    }
+  store.dispatch(
+    setMachineState({
+      ...state.machineState,
+      carriageSide: jsonData.direction,
+    })
+  );
 
-    await writePatternRow(GLOBAL_STATE.knittingState.currentRow); // write the current row to the machine
+  if (state.knittingState.patterning) {
+    store.dispatch(
+      setKnittingState({
+        ...state.knittingState,
+        currentRowNumber: state.knittingState.currentRowNumber + 1,
+      })
+    );
   }
-
-  drawPattern();
 }
 
 function processJSON(jsonData) {
@@ -76,19 +35,6 @@ function processJSON(jsonData) {
   } else if (msg_type === "error") {
     console.error("Error from device:", jsonData.msg);
   }
-}
-
-async function writePatternRow(rowNumber) {
-  let row = getRow(GLOBAL_STATE.basePattern, rowNumber);
-  if (GLOBAL_STATE.machineState.carriageSide === "right") {
-    row.reverse();
-  }
-
-  const rowData = {
-    msg_type: "row",
-    row: row,
-  };
-  await serial.writeJSON(rowData);
 }
 
 function rowNumber(row: number, currentRow: number) {
@@ -105,19 +51,11 @@ function gutters(height: number, currentRow: number) {
   return new Array(height).fill(0).map((_, i) => rowNumber(i, currentRow));
 }
 
-function recomputePattern() {
-  const patternWidth =
-    GLOBAL_STATE.machineState.pointCams[1] -
-    GLOBAL_STATE.machineState.pointCams[0];
-  const patternHeight = GLOBAL_STATE.basePattern.height;
-  const pattern = createEmptyBitmap(patternWidth, patternHeight);
+function patternConfig() {
+  const state = store.getState();
+  const patternConfig = state.patternConfig;
+  const machineState = state.machineState;
 
-  GLOBAL_STATE.computedPattern = pattern;
-
-  drawPattern();
-}
-
-function patternConfig(patternConfig: PatternConfig) {
   return html`
     <div class="bg-base-200 flex flex-col">
       <div
@@ -126,7 +64,7 @@ function patternConfig(patternConfig: PatternConfig) {
       </div>
       <div class="flex flex-col gap-1 p-1">
         <div class="flex flex-row gap-1">
-          <fieldset class="fieldset border-base-300 border-1 p-1">
+          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Mirroring</legend>
             <label class="label">
               <input type="checkbox" class="toggle toggle-xs" />
@@ -136,8 +74,8 @@ function patternConfig(patternConfig: PatternConfig) {
               <input type="checkbox" class="toggle toggle-xs" />
               Vertically
             </label>
-          </fieldset>
-          <fieldset class="fieldset border-base-300 border-1 p-1">
+          </fieldset> -->
+          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Doubling</legend>
             <label class="label">
               <input type="checkbox" class="toggle toggle-xs" />
@@ -147,8 +85,8 @@ function patternConfig(patternConfig: PatternConfig) {
               <input type="checkbox" class="toggle toggle-xs" />
               Columns
             </label>
-          </fieldset>
-          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
+          </fieldset> -->
+          <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Repeat</legend>
             <label class="label">
               <input type="checkbox" class="toggle toggle-xs" />
@@ -159,7 +97,7 @@ function patternConfig(patternConfig: PatternConfig) {
               Vertically
             </label>
           </fieldset>
-          <fieldset class="fieldset border-base-300 border-1 p-1">
+          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Margin</legend>
             <label class="input input-xs">
               <span class="label">Margin left</span>
@@ -196,11 +134,15 @@ function patternConfig(patternConfig: PatternConfig) {
             <label class="input input-xs">
               <span class="label">Left</span>
               <input
-                value=${GLOBAL_STATE.machineState.pointCams[0]}
+                value=${machineState.pointCams[0]}
                 @change=${(e: Event) => {
                   const value = (e.target as HTMLInputElement).value;
-                  GLOBAL_STATE.machineState.pointCams[0] = parseInt(value);
-                  recomputePattern();
+                  store.dispatch(
+                    setMachineState({
+                      ...machineState,
+                      pointCams: [parseInt(value), machineState.pointCams[1]],
+                    })
+                  );
                 }}
                 type="number"
                 class="validator"
@@ -211,11 +153,15 @@ function patternConfig(patternConfig: PatternConfig) {
             <label class="input input-xs">
               <span class="label">Right</span>
               <input
-                value=${GLOBAL_STATE.machineState.pointCams[1]}
+                value=${machineState.pointCams[1]}
                 @change=${(e: Event) => {
                   const value = (e.target as HTMLInputElement).value;
-                  GLOBAL_STATE.machineState.pointCams[1] = parseInt(value);
-                  recomputePattern();
+                  store.dispatch(
+                    setMachineState({
+                      ...machineState,
+                      pointCams: [machineState.pointCams[0], parseInt(value)],
+                    })
+                  );
                 }}
                 type="number"
                 class="validator"
@@ -230,22 +176,9 @@ function patternConfig(patternConfig: PatternConfig) {
   `;
 }
 
-function updateBasePattern(bitmap: Bitmap) {
-  GLOBAL_STATE.basePattern = bitmap;
-
-  // Draw the bitmap to the upload canvas
-  const uploadCanvas = document.getElementById(
-    "upload-result"
-  ) as HTMLCanvasElement;
-  const aspectRatio = bitmap.width / bitmap.height;
-  fitCanvasToParent(uploadCanvas, aspectRatio);
-  drawBitmapToCanvas(uploadCanvas, bitmap);
-
-  // Draw the final pattern to the pattern canvas
-  recomputePattern;
-}
-
 function patternUpload() {
+  const state = store.getState();
+
   return html`<div class="flex-1 flex flex-col p-1 gap-1 bg-base-200">
     <input
       type="file"
@@ -255,7 +188,7 @@ function patternUpload() {
         if (file) {
           try {
             const bitmap = await createBitmapFromImage(file);
-            updateBasePattern(bitmap);
+            store.dispatch(setBasePattern(bitmap));
           } catch (error) {
             console.error("Failed to load PNG:", error);
           }
@@ -265,67 +198,11 @@ function patternUpload() {
       <canvas id="upload-result" class="outline-1 outline-black"></canvas>
     </div>
     <div class="flex flex-row gap-1">
-      <span class="text-sm">Width: ${GLOBAL_STATE.basePattern.width}</span>
-      <span class="text-sm">Height: ${GLOBAL_STATE.basePattern.height}</span>
+      <span class="text-sm">Width: ${state.basePattern.width}</span>
+      <span class="text-sm">Height: ${state.basePattern.height}</span>
     </div>
   </div>`;
 }
-
-function interactiveKnitting() {
-  const height = GLOBAL_STATE.basePattern.height;
-
-  const currentRow = 0;
-
-  return html`<div
-      class="flex items-center bg-secondary text-secondary-content p-1 shadow-sm">
-      <span class="font-bold">Interactive Knitting</span>
-      <div class="flex-1"></div>
-      ${serial.connected() ? connectedBtns : disconnectedBtns}
-    </div>
-    <button
-      @click=${() => writePatternRow(GLOBAL_STATE.knittingState.currentRow)}
-      ?disabled=${!serial.connected()}
-      class="btn btn-xs btn-info">
-      Knit!
-    </button>
-    <span
-      >Side: ${GLOBAL_STATE.knittingState.carriageSide} Row:
-      ${GLOBAL_STATE.knittingState.currentRow}</span
-    >
-    <div class="flex flex-row overflow-y-auto border-t-1 border-black">
-      <div
-        class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-r-1">
-        ${gutters(height, currentRow)}
-      </div>
-
-      <canvas id="pattern-canvas" class="outline-1 outline-black"></canvas>
-      <div
-        class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-l-1">
-        ${gutters(height, currentRow)}
-      </div>
-    </div>`;
-}
-
-function knittingUI() {
-  return html` <div class="flex flex-col h-full gap-2 bg-base-300">
-    <div class="flex flex-row gap-1">
-      ${patternUpload()} ${patternConfig(GLOBAL_STATE.patternConfig)}
-    </div>
-
-    <div class="bg-base-200 outline-1 outline-black">
-      ${interactiveKnitting()}
-    </div>
-  </div>`;
-}
-
-// function designUI(designModeState: DesignMode) {
-//   return html`
-//     <div class="pattern-controls">
-//       <span>Color: ${designModeState.selectedColor}</span>
-//       <span>Tool: ${designModeState.selectedTool}</span>
-//     </div>
-//   `;
-// }
 
 const connectedBtns = html`
   <span id="status" class="text-sm">Connected!</span>
@@ -342,8 +219,61 @@ const disconnectedBtns = html`
   </button>
 `;
 
+function interactiveKnitting() {
+  const state = store.getState();
+  const basePattern = state.basePattern;
+  const height = basePattern.height;
+
+  const currentRow = 0;
+
+  return html`<div
+      class="flex items-center bg-secondary text-secondary-content p-1 shadow-sm">
+      <span class="font-bold">Interactive Knitting</span>
+      <div class="flex-1"></div>
+      ${serial.connected() ? connectedBtns : disconnectedBtns}
+    </div>
+    <button
+      @click=${() =>
+        store.dispatch(
+          setKnittingState({
+            ...state.knittingState,
+            patterning: true,
+          })
+        )}
+      ?disabled=${!serial.connected()}
+      class="btn btn-xs btn-info">
+      Knit!
+    </button>
+    <div class="flex flex-row gap-1">
+      <span>Side: ${state.knittingState.carriageSide}</span>
+      <span>Row: ${state.knittingState.currentRowNumber}</span>
+    </div>
+    <div class="flex flex-row overflow-y-auto border-t-1 border-black">
+      <div
+        class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-r-1">
+        ${gutters(height, currentRow)}
+      </div>
+
+      <canvas id="pattern-canvas" class="outline-1 outline-black"></canvas>
+      <div
+        class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-l-1">
+        ${gutters(height, currentRow)}
+      </div>
+    </div>`;
+}
+
+function knittingUI() {
+  return html` <div class="flex flex-col h-full gap-2 bg-base-300">
+    <div class="flex flex-row gap-1">${patternUpload()} ${patternConfig()}</div>
+
+    <div class="bg-base-200 outline-1 outline-black">
+      ${interactiveKnitting()}
+    </div>
+  </div>`;
+}
+
 function toolbar() {
-  return html` <div
+  return html`<div
     class="bg-primary text-primary-content flex items-center shadow-sm gap-1 p-1 sticky top-0">
     <span class="font-bold">Silver Reed/Write Controller</span>
     <div class="flex-1"></div>
@@ -363,9 +293,4 @@ function r() {
 
 document.addEventListener("DOMContentLoaded", () => {
   r();
-  drawPattern();
-  // drawBitmapToCanvas(
-  //   document.getElementById("upload-result") as HTMLCanvasElement,
-  //   GLOBAL_STATE.basePattern
-  // );
 });
