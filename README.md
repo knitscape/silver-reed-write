@@ -61,3 +61,40 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
 # (DIN 7) 5v: Supplies the logic on the board
 # (DIN 8) GND: Ground
 ```
+
+## Todo
+
+- Workspace
+  - [ ] save state to browser storage
+  - [ ] Make a pattern library
+- Micropython/webserial
+  - [x] Connect and disconnect to microcontroller via webserial
+  - [x] Can send/receive messages to/from microcontroller over webserial
+  - [x] Microcontroller can control machine patterning from a pattern row
+  - [x] Microcontroller reports that it has finished a row (and what side it is
+        on)
+- Interactive Knitting
+  - [x] Visualize pattern being sent to microcontroller and highlight next row
+  - [x] Send next row on connect and on finishing a row
+  - [x] reverse pattern row depending on carriage side
+  - [ ] Select which row to send next in web interface
+  - [ ] Notify if point cams are not in the right place
+- Pattern config
+  - [ ] upload patterns (BMP, PNG, JPG)
+  - [ ] mirroring
+  - [ ] doubling rows/cols
+  - [ ] horizontal/vertical repeat
+  - [ ] end needle selection
+  - [ ] center repeat
+  - [ ] margin
+  - [ ] small preview
+  - [ ] save preview image
+- Pattern design (black and white)
+  - [ ] pixel art editor
+  - [ ] resize pattern extents
+  - [ ] save pattern
+
+## Dev notes
+
+- If you're using VSCode/Cursor, you need to set the language mode to
+  `tailwindcss` for the `css` file or else it will complain about the at rules.

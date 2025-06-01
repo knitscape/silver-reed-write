@@ -42,17 +42,16 @@ export type MachineState = {
   yarnConfig: YarnConfig;
 };
 
-export type KnittingMode = {
+export type KnittingState = {
+  patterning: boolean; // If we are doing auto patterning
   currentRow: number;
   carriageSide: "left" | "right";
 };
 
-export type DesignMode = {
+export type DesignState = {
   selectedColor: RGBColor;
   selectedTool: "brush" | "flood" | "rect" | "line" | "shift" | "pan";
 };
-
-export type InteractionMode = KnittingMode | DesignMode;
 
 export const initialState = {
   patternConfig: {
@@ -69,7 +68,7 @@ export const initialState = {
     margin_right: 0,
   } as PatternConfig,
   machineState: {
-    pointCams: [0, 0],
+    pointCams: [-10, 10],
     carriageSide: "left",
     yarnConfig: {
       feeder_1: { color: [255, 0, 0] },
@@ -77,18 +76,24 @@ export const initialState = {
     } as FairisleConfig,
   } as MachineState,
   basePattern: {
-    data: new Array(3000).fill(0).map(() => Math.round(Math.random())), // 100x30 = 3000 pixels
-    width: 100,
-    height: 30,
+    data: new Array(32).fill(0).map(() => Math.round(Math.random())),
+    width: 4,
+    height: 8,
     palette: [
       [0, 0, 0],
       [255, 255, 255],
     ],
   } as Bitmap,
-  interactionMode: {
+  computedPattern: null as Bitmap | null,
+  knittingState: {
+    patterning: false,
     currentRow: 0,
     carriageSide: "left",
-  } as InteractionMode,
+  } as KnittingState,
+  designState: {
+    selectedColor: [0, 0, 0],
+    selectedTool: "brush",
+  } as DesignState,
 };
 
 export type GlobalState = typeof initialState;

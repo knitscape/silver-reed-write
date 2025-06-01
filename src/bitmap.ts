@@ -221,3 +221,113 @@ export function drawBitmapToCanvas(
   }
   ctx.putImageData(imageData, 0, 0);
 }
+
+export function fitCanvasToParent(
+  canvas: HTMLCanvasElement,
+  aspectRatio: number
+) {
+  const parent = canvas.parentElement;
+  if (!parent) {
+    return;
+  }
+
+  const parentWidth = parent.clientWidth;
+  const parentHeight = parent.clientHeight;
+
+  if (parentWidth / parentHeight > aspectRatio) {
+    // Parent is wider than needed - fit to height
+    canvas.style.height = `${parentHeight}px`;
+    canvas.style.width = `${parentHeight * aspectRatio}px`;
+  } else {
+    // Parent is taller than needed - fit to width
+    canvas.style.width = `${parentWidth}px`;
+    canvas.style.height = `${parentWidth / aspectRatio}px`;
+  }
+}
+
+const SUPPORTED_FORMATS = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+];
+
+export async function createBitmapFromImage(file: File): Promise<Bitmap> {
+  if (!SUPPORTED_FORMATS.includes(file.type)) {
+    throw new Error(
+      `Unsupported image format: ${
+        file.type
+      }. Supported formats are: ${SUPPORTED_FORMATS.join(", ")}`
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      reject(new Error("Failed to get canvas context"));
+      return;
+    }
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const data = new Uint8Array(img.width * img.height);
+      const palette: Palette = [];
+      const colorMap = new Map<string, number>();
+
+      // Process each pixel and build the palette
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const r = imageData.data[i];
+        const g = imageData.data[i + 1];
+        const b = imageData.data[i + 2];
+        const a = imageData.data[i + 3];
+
+        // Skip fully transparent pixels
+        if (a === 0) {
+          data[i / 4] = 0;
+          continue;
+        }
+
+        const colorKey = `${r},${g},${b}`;
+
+        if (!colorMap.has(colorKey)) {
+          colorMap.set(colorKey, palette.length);
+          palette.push([r, g, b]);
+        }
+
+        data[i / 4] = colorMap.get(colorKey)!;
+      }
+
+      // Ensure we have at least one color in the palette
+      if (palette.length === 0) {
+        palette.push([0, 0, 0]);
+      }
+
+      resolve({
+        width: img.width,
+        height: img.height,
+        data: Array.from(data),
+        palette,
+      });
+    };
+
+    img.onerror = () => {
+      reject(new Error("Failed to load image"));
+    };
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => {
+      reject(new Error("Failed to read file"));
+    };
+    reader.readAsDataURL(file);
+  });
+}
