@@ -9,38 +9,10 @@ import {
 import { createBitmapFromImage } from "./bitmap";
 
 import { store } from "./store";
+import { drawComputedPattern } from "./drawing";
+import { drawUploadedPattern } from "./drawing";
+import { selectComputedPattern } from "./selectors";
 
-async function processState(jsonData) {
-  // console.log("processState", jsonData);
-  const state = store.getState();
-
-  store.dispatch(
-    setMachineState({
-      ...state.machineState,
-      carriageSide: jsonData.direction,
-    })
-  );
-
-  if (state.knittingState.patterning) {
-    store.dispatch(
-      setKnittingState({
-        ...state.knittingState,
-        currentRowNumber: state.knittingState.currentRowNumber + 1,
-      })
-    );
-  }
-}
-
-function processJSON(jsonData) {
-  const msg_type = jsonData.msg_type;
-  if (msg_type === "state") {
-    processState(jsonData.msg);
-  } else if (msg_type === "echo") {
-    console.log("Received echo:", jsonData.msg);
-  } else if (msg_type === "error") {
-    console.error("Error from device:", jsonData.msg);
-  }
-}
 
 function rowNumber(row: number, currentRow: number) {
   const isCurrentRow = row === currentRow;
@@ -248,7 +220,7 @@ const connectedBtns = html`
 
 const disconnectedBtns = html`
   <button
-    @click=${() => serial.connect(processJSON)}
+    @click=${() => serial.connect()}
     class="btn btn-xs btn-accent">
     Connect to Machine
   </button>
@@ -259,13 +231,14 @@ function interactiveKnitting() {
   const basePattern = state.basePattern;
   const height = basePattern.height;
 
-  const currentRow = 0;
+  const currentRow = state.knittingState.currentRowNumber;
+  const connected = serial.connected();
 
   return html`<div
       class="flex items-center bg-secondary text-secondary-content p-1 shadow-sm">
       <span class="font-bold">Interactive Knitting</span>
       <div class="flex-1"></div>
-      ${serial.connected() ? connectedBtns : disconnectedBtns}
+      ${connected ? connectedBtns : disconnectedBtns}
     </div>
     <button
       @click=${() =>
@@ -275,13 +248,13 @@ function interactiveKnitting() {
             patterning: true,
           })
         )}
-      ?disabled=${!serial.connected()}
+      ?disabled=${!connected}
       class="btn btn-xs btn-info">
       Knit!
     </button>
     <div class="flex flex-row gap-1">
       <span>Side: ${state.knittingState.carriageSide}</span>
-      <span>Row: ${state.knittingState.currentRowNumber}</span>
+      <span>Row: ${currentRow}</span>
     </div>
     <div class="flex flex-row overflow-y-auto border-t-1 border-black">
       <div
@@ -300,7 +273,6 @@ function interactiveKnitting() {
 function knittingUI() {
   return html` <div class="flex flex-col h-full gap-2 bg-base-300">
     <div class="flex flex-row gap-1">${patternUpload()} ${patternConfig()}</div>
-
     <div class="bg-base-200 outline-1 outline-black">
       ${interactiveKnitting()}
     </div>
@@ -328,4 +300,11 @@ function r() {
 
 document.addEventListener("DOMContentLoaded", () => {
   r();
+
+  const initialState = store.getState();
+  drawUploadedPattern(initialState.basePattern);
+  drawComputedPattern(
+    selectComputedPattern(initialState),
+    initialState.knittingState
+  );
 });

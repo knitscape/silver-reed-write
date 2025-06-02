@@ -2,20 +2,22 @@ let port;
 let reader;
 let writer;
 let reading = false;
+import { store } from "./store";
+import { setMachineState, advanceRow } from "./slice";
 
-async function connect(msgCb) {
+async function connect() {
   try {
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: 115200 });
     reader = port.readable.getReader();
     writer = port.writable.getWriter();
-    startReading(msgCb);
+    startReading();
   } catch (error) {
     console.error("Error connecting to device:", error);
   }
 }
 
-async function startReading(msgCb) {
+async function startReading() {
   reading = true;
   let currentString = "";
   while (reading) {
@@ -35,7 +37,7 @@ async function startReading(msgCb) {
           if (log === "\n") {
             try {
               const jsonData = JSON.parse(currentString);
-              msgCb(jsonData);
+              processJSON(jsonData);
             } catch (error) {
               console.error("Error parsing JSON string:", currentString);
             }
@@ -86,17 +88,44 @@ async function disconnect() {
   }
 }
 
+export async function writePatternRow(row) {
+  const rowData = {
+    msg_type: "row",
+    row: row,
+  };
+  console.log("Writing row:", rowData);
+  await serial.writeJSON(rowData);
+}
+
+function processJSON(jsonData) {
+  const msg_type = jsonData.msg_type;
+  if (msg_type === "state") {
+    processState(jsonData.msg);
+  } else if (msg_type === "echo") {
+    console.log("Received echo:", jsonData.msg);
+  } else if (msg_type === "error") {
+    console.error("Error from device:", jsonData.msg);
+  }
+}
+
+async function processState(jsonData) {
+  const state = store.getState();
+
+  store.dispatch(
+    setMachineState({
+      ...state.machineState,
+      carriageSide: jsonData.direction,
+    })
+  );
+
+  if (state.knittingState.patterning) {
+    store.dispatch(advanceRow());
+  }
+}
+
 export const serial = {
   connect,
   disconnect,
   connected: () => (port ? true : false),
   writeJSON,
 };
-
-export async function writePatternRow(row) {
-  const rowData = {
-    msg_type: "row",
-    row: row,
-  };
-  await serial.writeJSON(rowData);
-}

@@ -4,7 +4,6 @@ import { writePatternRow } from "./serial";
 import { drawUploadedPattern, drawComputedPattern } from "./drawing";
 import { selectComputedPattern, selectCurrentRow } from "./selectors";
 
-// Create middleware that can run code after specific reducers
 const afterReducerMiddleware = (store) => (next) => async (action) => {
   // Run the reducer
   const result = next(action);
@@ -15,7 +14,6 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
   // After the reducer runs, do things based on the action type
   switch (action.type) {
     case "controller/setBasePattern":
-      console.log("Base pattern was updated");
       drawUploadedPattern(newState.basePattern);
       drawComputedPattern(
         selectComputedPattern(newState),
@@ -23,14 +21,12 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
       );
       break;
     case "controller/setPatternConfig":
-      console.log("Pattern config was updated");
       drawComputedPattern(
         selectComputedPattern(newState),
         newState.knittingState
       );
       break;
     case "controller/setMachineState":
-      console.log("Machine state was updated");
       drawComputedPattern(
         selectComputedPattern(newState),
         newState.knittingState
@@ -55,3 +51,4 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(afterReducerMiddleware),
 });
+

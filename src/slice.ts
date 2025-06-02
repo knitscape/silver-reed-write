@@ -31,9 +31,9 @@ export const initialState = {
     } as FairisleConfig,
   } as MachineState,
   basePattern: {
-    data: new Array(32).fill(0).map(() => Math.round(Math.random())),
-    width: 4,
-    height: 8,
+    data: [0,1,1,0],
+    width: 2,
+    height: 2,
     palette: [
       [0, 0, 0],
       [255, 255, 255],
@@ -66,8 +66,15 @@ const slice = createSlice({
       state.machineState = action.payload;
     },
     setKnittingState: (state, action) => {
+      console.log("setKnittingState", action.payload);
       state.knittingState = action.payload;
     },
+    advanceRow: (state, action) => {
+      state.knittingState.currentRowNumber = state.knittingState.currentRowNumber + 1;
+      if (state.knittingState.currentRowNumber >= state.basePattern.height) {
+        state.knittingState.currentRowNumber = 0;
+      }
+    }
   },
 });
 
@@ -76,6 +83,7 @@ export const {
   setPatternConfig,
   setMachineState,
   setKnittingState,
+  advanceRow,
 } = slice.actions;
 
 export default slice.reducer;

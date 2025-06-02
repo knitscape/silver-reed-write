@@ -39,7 +39,6 @@ export function tileBitmap(
     ? Math.floor((bitmap.width - baseBitmap.width) / 2)
     : 0;
 
-  console.log(xOffset);
 
   for (let y = 0; y < bitmap.height; y++) {
     for (let x = 0; x < bitmap.width; x++) {
