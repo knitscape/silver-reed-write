@@ -93,7 +93,6 @@ export async function writePatternRow(row) {
     msg_type: "row",
     row: row,
   };
-  console.log("Writing row:", rowData);
   await serial.writeJSON(rowData);
 }
 

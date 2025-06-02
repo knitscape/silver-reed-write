@@ -64,6 +64,8 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
 
 ## Todo
 
+- Core features
+  - [ ] notify on disconnect
 - Workspace
   - [ ] save state to browser storage
   - [ ] Make a pattern library
@@ -80,12 +82,12 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
   - [ ] Select which row to send next in web interface
   - [ ] Notify if point cams are not in the right place
 - Pattern config
-  - [ ] upload patterns (BMP, PNG, JPG)
+  - [x] upload patterns (BMP, PNG, JPG)
   - [ ] mirroring
   - [ ] doubling rows/cols
-  - [ ] horizontal/vertical repeat
-  - [ ] end needle selection
-  - [ ] center repeat
+  - [x] horizontal/vertical repeat
+  - [x] end needle selection
+  - [x] center repeat
   - [ ] margin
   - [ ] small preview
   - [ ] save preview image

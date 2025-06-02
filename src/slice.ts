@@ -23,7 +23,7 @@ export const initialState = {
     marginRight: 0,
   } as PatternConfig,
   machineState: {
-    pointCams: [-10, 10],
+    pointCams: [-20, 20],
     carriageSide: "left",
     yarnConfig: {
       feeder_1: { color: [255, 0, 0] },
@@ -31,9 +31,14 @@ export const initialState = {
     } as FairisleConfig,
   } as MachineState,
   basePattern: {
-    data: [0,1,1,0],
-    width: 2,
-    height: 2,
+    data: [
+      // 8x8 zigzag pattern
+      0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
+      1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
+      1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
+    ],
+    width: 8,
+    height: 8,
     palette: [
       [0, 0, 0],
       [255, 255, 255],
@@ -70,11 +75,12 @@ const slice = createSlice({
       state.knittingState = action.payload;
     },
     advanceRow: (state, action) => {
-      state.knittingState.currentRowNumber = state.knittingState.currentRowNumber + 1;
+      state.knittingState.currentRowNumber =
+        state.knittingState.currentRowNumber + 1;
       if (state.knittingState.currentRowNumber >= state.basePattern.height) {
         state.knittingState.currentRowNumber = 0;
       }
-    }
+    },
   },
 });
 

@@ -13,14 +13,13 @@ import { drawComputedPattern } from "./drawing";
 import { drawUploadedPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
 
-
 function rowNumber(row: number, currentRow: number) {
   const isCurrentRow = row === currentRow;
   return html`<div
-    class="flex font-mono items-center justify-center w-[50px] h-[20px] leading-0 hover:cursor-pointer hover:bg-gray-100 ${isCurrentRow
-      ? "bg-gray-300 border-t-1 border-b-1 border-black"
+    class="flex items-center justify-center w-[50px] h-[20px] leading-0 hover:cursor-pointer hover:bg-gray-100 ${isCurrentRow
+      ? "bg-gray-300"
       : ""}">
-    ${row + 1}
+    <span class="text-xs font-mono self-end">${row + 1}</span>
   </div>`;
 }
 
@@ -219,9 +218,7 @@ const connectedBtns = html`
 `;
 
 const disconnectedBtns = html`
-  <button
-    @click=${() => serial.connect()}
-    class="btn btn-xs btn-accent">
+  <button @click=${() => serial.connect()} class="btn btn-xs btn-accent">
     Connect to Machine
   </button>
 `;
@@ -234,7 +231,7 @@ function interactiveKnitting() {
   const currentRow = state.knittingState.currentRowNumber;
   const connected = serial.connected();
 
-  return html`<div
+  return html` <div
       class="flex items-center bg-secondary text-secondary-content p-1 shadow-sm">
       <span class="font-bold">Interactive Knitting</span>
       <div class="flex-1"></div>
@@ -256,32 +253,39 @@ function interactiveKnitting() {
       <span>Side: ${state.knittingState.carriageSide}</span>
       <span>Row: ${currentRow}</span>
     </div>
-    <div class="flex flex-row overflow-y-auto border-t-1 border-black">
+    <div class="flex flex-row overflow-y-auto">
       <div
-        class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-r-1">
-        ${gutters(height, currentRow)}
-      </div>
-
-      <canvas id="pattern-canvas" class="outline-1 outline-black"></canvas>
-      <div
-        class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-l-1">
-        ${gutters(height, currentRow)}
+        style="height: ${height * 20}px"
+        class="flex flex-row relative mx-auto">
+        <div
+          id="left-gutter"
+          class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-1">
+          ${gutters(height, currentRow)}
+        </div>
+        <canvas id="pattern-canvas" class="border-y-1 border-black"></canvas>
+        <div
+          id="right-gutter"
+          class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-1">
+          ${gutters(height, currentRow)}
+        </div>
+        <div
+          class="absolute w-full h-[20px] bg-[#ff000050] pointer-events-none"
+          style="bottom: ${currentRow * 20}px"></div>
       </div>
     </div>`;
 }
 
 function knittingUI() {
-  return html` <div class="flex flex-col h-full gap-2 bg-base-300">
+  return html` <div
+    class="flex flex-col flex-1 gap-2 bg-base-300 overflow-hidden">
     <div class="flex flex-row gap-1">${patternUpload()} ${patternConfig()}</div>
-    <div class="bg-base-200 outline-1 outline-black">
-      ${interactiveKnitting()}
-    </div>
+    <div class="flex flex-col overflow-hidden">${interactiveKnitting()}</div>
   </div>`;
 }
 
 function toolbar() {
   return html`<div
-    class="bg-primary text-primary-content flex items-center shadow-sm gap-1 p-1 sticky top-0">
+    class="bg-primary text-primary-content flex items-center shadow-sm gap-1 p-1">
     <span class="font-bold">Silver Reed/Write Controller</span>
     <div class="flex-1"></div>
   </div>`;
@@ -289,7 +293,9 @@ function toolbar() {
 
 function view() {
   return html`
-    <div class="flex flex-col h-screen">${toolbar()} ${knittingUI()}</div>
+    <div class="flex flex-col h-screen overflow-hidden">
+      ${toolbar()} ${knittingUI()}
+    </div>
   `;
 }
 
