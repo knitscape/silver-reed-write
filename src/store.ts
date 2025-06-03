@@ -36,6 +36,11 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
         drawPreviewPattern(newState.basePattern);
       }, 0);
       drawComputedPattern(selectComputedPattern(newState));
+      break;
+
+    case "controller/drawChanges":
+      drawPreviewPattern(newState.basePattern);
+      drawComputedPattern(selectComputedPattern(newState));
 
       break;
   }

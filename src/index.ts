@@ -1,10 +1,12 @@
 import { html, render } from "lit-html";
 import { serial } from "./serial";
 import {
+  drawChanges,
   setBasePattern,
   setKnittingState,
   setMachineState,
   setMode,
+  setMousePos,
   setPatternConfig,
   setTool,
 } from "./slice";
@@ -13,11 +15,23 @@ import {
   createEmptyBitmap,
   bitmapEditingTools,
 } from "./bitmap";
-
+import { isLeftClick, getCellFromEvent, getCurrentCellSize } from "./utils";
 import { store } from "./store";
 import { drawComputedPattern, drawPreviewPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
 import Split from "split.js";
+
+let row = 0;
+let onToolMove: null | Function = null;
+
+// Add a pointer up handler to reset the onToolMove
+function onPointerUp() {
+  onToolMove = null;
+}
+
+// Register the pointer up event globally
+window.addEventListener("pointerup", onPointerUp);
+window.addEventListener("pointerup", onPointerUp);
 
 function patternConfig() {
   const state = store.getState();
@@ -191,13 +205,13 @@ function patternUpload() {
       <span class="text-sm">Width: ${state.basePattern.width}</span>
       <span class="text-sm">Height: ${state.basePattern.height}</span>
     </div>
-    <div class="flex flex-1 items-center justify-center overflow-hidden">
+    <div
+      id="artboard-container"
+      class="flex flex-1 items-center justify-center overflow-hidden">
       <canvas id="preview-canvas" class="border-1 border-black"></canvas>
     </div>
   `;
 }
-
-let row = 0;
 
 function getRow(e: PointerEvent, height: number) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -349,9 +363,57 @@ function interactiveKnitting() {
     </div>`;
 }
 
+function dragTool(startCell: [number, number]) {
+  const state = store.getState();
+  let lastCell = startCell;
+
+  let tool = bitmapEditingTools[state.designState.selectedTool];
+  let onEnterCell = tool(
+    state.basePattern,
+    lastCell,
+    state.designState.selectedPaletteIndex
+  );
+
+  const changes = onEnterCell(lastCell);
+  store.dispatch(drawChanges(changes));
+
+  function pointerMove(currentCell: [number, number]) {
+    if (currentCell[0] === lastCell[0] && currentCell[1] === lastCell[1])
+      return;
+    const changes = onEnterCell(currentCell);
+    store.dispatch(drawChanges(changes));
+
+    lastCell = currentCell;
+  }
+
+  return pointerMove;
+}
+
+function onArtboardDown(e: PointerEvent) {
+  if (!isLeftClick(e)) return;
+  const cell = getCellFromEvent(e, store.getState().basePattern);
+
+  onToolMove = dragTool(cell);
+}
+
+function artboardPointerMove(e: PointerEvent) {
+  const cell = getCellFromEvent(e, store.getState().basePattern);
+  store.dispatch(setMousePos(cell));
+
+  if (onToolMove) {
+    onToolMove(cell);
+  }
+}
+
 function patternDesign() {
   const state = store.getState();
   const tool = state.designState.selectedTool;
+  const canvas = document.getElementById("preview-canvas") as HTMLCanvasElement;
+  const cellSize = canvas
+    ? getCurrentCellSize(canvas.getBoundingClientRect(), state.basePattern)
+    : null;
+
+  const mousePos = state.designState.mousePos;
 
   return html`
     <div class="flex flex-row items-center bg-base-200 gap-1 shadow-sm">
@@ -393,9 +455,7 @@ function patternDesign() {
           max="1000"
           step="1" />
       </label>
-
       <div class="flex flex-1"></div>
-
       <div class="tabs tabs-xs tabs-box">
         ${Object.keys(bitmapEditingTools).map(
           (toolName) =>
@@ -405,7 +465,6 @@ function patternDesign() {
               ?checked=${tool === toolName}
               class="tab"
               @change=${() => {
-                console.log("toolName", toolName);
                 store.dispatch(setTool(toolName));
               }}
               name="tool"
@@ -413,8 +472,26 @@ function patternDesign() {
         )}
       </div>
     </div>
-    <div class="flex flex-1 items-center justify-center overflow-hidden">
-      <canvas id="preview-canvas" class="border-1 border-black"></canvas>
+    <div
+      id="artboard-container"
+      class="flex flex-1 justify-center overflow-hidden ">
+      <div class="flex relative border-1 border-black">
+        <canvas
+          id="preview-canvas"
+          @pointerdown=${onArtboardDown}
+          @pointermove=${artboardPointerMove}
+          @pointerleave=${() => store.dispatch(setMousePos(null))}></canvas>
+        ${mousePos &&
+        cellSize &&
+        html`<div
+            class="bg-[#ffffff50] pointer-events-none z-10 absolute w-full left-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
+            style="top: ${mousePos[1] *
+            cellSize}px; height: ${cellSize}px"></div>
+          <div
+            class="bg-[#ffffff50] pointer-events-none z-10 absolute h-full top-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
+            style="left: ${mousePos[0] *
+            cellSize}px; width: ${cellSize}px"></div>`}
+      </div>
     </div>
   `;
 }

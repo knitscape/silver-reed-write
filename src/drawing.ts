@@ -28,7 +28,7 @@ export function fitCanvasToParent(
   canvas: HTMLCanvasElement,
   aspectRatio: number
 ) {
-  const parent = canvas.parentElement;
+  const parent = document.getElementById("artboard-container");
   if (!parent) {
     return;
   }

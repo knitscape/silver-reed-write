@@ -64,8 +64,9 @@ export const initialState = {
     carriageSide: "left",
   } as KnittingState,
   designState: {
-    selectedColor: [0, 0, 0],
+    selectedPaletteIndex: 0,
     selectedTool: "brush",
+    mousePos: null,
   } as DesignState,
   mode: "design" as "upload" | "design" | "library",
 };
@@ -106,6 +107,21 @@ const slice = createSlice({
       console.log("setTool", action.payload);
       state.designState.selectedTool = action.payload;
     },
+    drawChanges(state, action) {
+      for (const [x, y, paletteIndex] of action.payload) {
+        if (
+          x < 0 ||
+          y < 0 ||
+          x >= state.basePattern.width ||
+          y >= state.basePattern.height
+        )
+          continue;
+        state.basePattern.data[x + y * state.basePattern.width] = paletteIndex;
+      }
+    },
+    setMousePos(state, action) {
+      state.designState.mousePos = action.payload;
+    },
   },
 });
 
@@ -117,6 +133,8 @@ export const {
   advanceRow,
   setMode,
   setTool,
+  drawChanges,
+  setMousePos,
 } = slice.actions;
 
 export default slice.reducer;

@@ -50,6 +50,7 @@ export type KnittingState = {
 };
 
 export type DesignState = {
-  selectedColor: RGBColor;
-  selectedTool: "brush" | "flood" | "rect" | "line" | "shift" | "pan";
+  selectedPaletteIndex: number;
+  selectedTool: "brush" | "flood" | "rect" | "line" | "shift";
+  mousePos: [number, number] | null;
 };
