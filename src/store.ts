@@ -43,6 +43,10 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
       drawComputedPattern(selectComputedPattern(newState));
 
       break;
+    case "controller/resizeBitmap":
+      drawPreviewPattern(newState.basePattern);
+      drawComputedPattern(selectComputedPattern(newState));
+      break;
   }
 
   return result;

@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { Bitmap } from "./bitmap";
+import { Bitmap, createEmptyBitmap } from "./bitmap";
 import {
   PatternConfig,
   MachineState,
@@ -122,6 +122,31 @@ const slice = createSlice({
     setMousePos(state, action) {
       state.designState.mousePos = action.payload;
     },
+    resizeBitmap(state, action) {
+      const { width, height } = action.payload;
+
+      const newWidth = Math.max(1, width);
+      const newHeight = Math.max(1, height);
+
+      // Create a new bitmap with the requested dimensions
+      const newBitmap = createEmptyBitmap(newWidth, newHeight, [0, 0, 0]);
+      newBitmap.palette = state.basePattern.palette;
+      const oldBitmap = state.basePattern;
+
+      // Copy existing data, preserving as much as possible
+      for (let y = 0; y < Math.min(oldBitmap.height, newHeight); y++) {
+        for (let x = 0; x < Math.min(oldBitmap.width, newWidth); x++) {
+          const oldIndex = x + y * oldBitmap.width;
+          const newIndex = x + y * newWidth;
+          newBitmap.data[newIndex] = oldBitmap.data[oldIndex];
+        }
+      }
+
+      state.basePattern = newBitmap;
+    },
+    setPaletteIndex(state, action) {
+      state.designState.selectedPaletteIndex = action.payload;
+    },
   },
 });
 
@@ -135,6 +160,8 @@ export const {
   setTool,
   drawChanges,
   setMousePos,
+  resizeBitmap,
+  setPaletteIndex,
 } = slice.actions;
 
 export default slice.reducer;

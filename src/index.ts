@@ -2,11 +2,13 @@ import { html, render } from "lit-html";
 import { serial } from "./serial";
 import {
   drawChanges,
+  resizeBitmap,
   setBasePattern,
   setKnittingState,
   setMachineState,
   setMode,
   setMousePos,
+  setPaletteIndex,
   setPatternConfig,
   setTool,
 } from "./slice";
@@ -15,7 +17,12 @@ import {
   createEmptyBitmap,
   bitmapEditingTools,
 } from "./bitmap";
-import { isLeftClick, getCellFromEvent, getCurrentCellSize } from "./utils";
+import {
+  isLeftClick,
+  getCellFromEvent,
+  getCurrentCellSize,
+  rgbToHex,
+} from "./utils";
 import { store } from "./store";
 import { drawComputedPattern, drawPreviewPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
@@ -414,21 +421,21 @@ function patternDesign() {
     : null;
 
   const mousePos = state.designState.mousePos;
+  const paletteIndex = state.designState.selectedPaletteIndex;
 
   return html`
-    <div class="flex flex-row items-center bg-base-200 gap-1 shadow-sm">
+    <div class="flex flex-row items-center bg-base-200 gap-1 shadow-sm p-1">
       <label class="input input-xs w-[130px]">
         <span class="label">Width</span>
         <input
           value=${state.basePattern.width}
-          @change=${() => {
+          @change=${(e: Event) => {
+            const value = (e.target as HTMLInputElement).value;
             store.dispatch(
-              setBasePattern(
-                createEmptyBitmap(
-                  state.basePattern.width,
-                  state.basePattern.height
-                )
-              )
+              resizeBitmap({
+                width: parseInt(value),
+                height: state.basePattern.height,
+              })
             );
           }}
           type="number"
@@ -440,14 +447,13 @@ function patternDesign() {
         <span class="label">Height</span>
         <input
           value=${state.basePattern.height}
-          @change=${() => {
+          @change=${(e: Event) => {
+            const value = (e.target as HTMLInputElement).value;
             store.dispatch(
-              setBasePattern(
-                createEmptyBitmap(
-                  state.basePattern.width,
-                  state.basePattern.height
-                )
-              )
+              resizeBitmap({
+                width: state.basePattern.width,
+                height: parseInt(value),
+              })
             );
           }}
           type="number"
@@ -472,25 +478,40 @@ function patternDesign() {
         )}
       </div>
     </div>
-    <div
-      id="artboard-container"
-      class="flex flex-1 justify-center overflow-hidden ">
-      <div class="flex relative border-1 border-black">
-        <canvas
-          id="preview-canvas"
-          @pointerdown=${onArtboardDown}
-          @pointermove=${artboardPointerMove}
-          @pointerleave=${() => store.dispatch(setMousePos(null))}></canvas>
-        ${mousePos &&
-        cellSize &&
-        html`<div
-            class="bg-[#ffffff50] pointer-events-none z-10 absolute w-full left-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
-            style="top: ${mousePos[1] *
-            cellSize}px; height: ${cellSize}px"></div>
-          <div
-            class="bg-[#ffffff50] pointer-events-none z-10 absolute h-full top-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
-            style="left: ${mousePos[0] *
-            cellSize}px; width: ${cellSize}px"></div>`}
+    <div class="flex flex-1 flex-row gap-1 overflow-hidden p-2">
+      <div
+        class="flex flex-col gap-1 bg-base-100 shadow-sm self-center p-1 rounded-md">
+        ${state.basePattern.palette.map(
+          (color, index) =>
+            html`<div
+              class="w-[30px] h-[30px] rounded-sm shadow-sm ${index ===
+              paletteIndex
+                ? "border-2 border-white outline outline-2 outline-black"
+                : ""}"
+              style="background-color: rgb(${color[0]}, ${color[1]}, ${color[2]})"
+              @click=${() => store.dispatch(setPaletteIndex(index))}></div>`
+        )}
+      </div>
+      <div
+        id="artboard-container"
+        class="flex flex-1 justify-center overflow-hidden ">
+        <div class="flex relative border-1 border-black">
+          <canvas
+            id="preview-canvas"
+            @pointerdown=${onArtboardDown}
+            @pointermove=${artboardPointerMove}
+            @pointerleave=${() => store.dispatch(setMousePos(null))}></canvas>
+          ${mousePos &&
+          cellSize &&
+          html`<div
+              class="bg-[#ffffff50] pointer-events-none z-10 absolute w-full left-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
+              style="top: ${mousePos[1] *
+              cellSize}px; height: ${cellSize}px"></div>
+            <div
+              class="bg-[#ffffff50] pointer-events-none z-10 absolute h-full top-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
+              style="left: ${mousePos[0] *
+              cellSize}px; width: ${cellSize}px"></div>`}
+        </div>
       </div>
     </div>
   `;
