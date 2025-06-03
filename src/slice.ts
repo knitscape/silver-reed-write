@@ -67,6 +67,7 @@ export const initialState = {
     selectedColor: [0, 0, 0],
     selectedTool: "brush",
   } as DesignState,
+  mode: "design" as "upload" | "design" | "library",
 };
 
 export type GlobalState = typeof initialState;
@@ -98,6 +99,13 @@ const slice = createSlice({
         state.knittingState.currentRowNumber = 0;
       }
     },
+    setMode: (state, action) => {
+      state.mode = action.payload;
+    },
+    setTool: (state, action) => {
+      console.log("setTool", action.payload);
+      state.designState.selectedTool = action.payload;
+    },
   },
 });
 
@@ -107,6 +115,8 @@ export const {
   setMachineState,
   setKnittingState,
   advanceRow,
+  setMode,
+  setTool,
 } = slice.actions;
 
 export default slice.reducer;

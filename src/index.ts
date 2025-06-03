@@ -4,14 +4,20 @@ import {
   setBasePattern,
   setKnittingState,
   setMachineState,
+  setMode,
   setPatternConfig,
+  setTool,
 } from "./slice";
-import { createBitmapFromImage } from "./bitmap";
+import {
+  createBitmapFromImage,
+  createEmptyBitmap,
+  bitmapEditingTools,
+} from "./bitmap";
 
 import { store } from "./store";
-import { drawComputedPattern } from "./drawing";
-import { drawUploadedPattern } from "./drawing";
+import { drawComputedPattern, drawPreviewPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
+import Split from "split.js";
 
 function patternConfig() {
   const state = store.getState();
@@ -19,14 +25,13 @@ function patternConfig() {
   const machineState = state.machineState;
 
   return html`
-    <div class="bg-base-200 flex flex-col">
+    <div class="bg-base-200 flex flex-col border-l-1 border-gray-500">
       <div
-        class="flex flex-row items-center justify-between bg-secondary text-secondary-content p-1">
+        class="flex flex-row items-center bg-neutral text-neutral-content p-1">
         <span class="font-bold">Pattern config</span>
       </div>
       <div class="flex flex-col gap-1 p-1">
-        <div class="flex flex-row gap-1">
-          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
+        <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Mirroring</legend>
             <label class="label">
               <input type="checkbox" class="toggle toggle-xs" />
@@ -37,7 +42,7 @@ function patternConfig() {
               Vertically
             </label>
           </fieldset> -->
-          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
+        <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Doubling</legend>
             <label class="label">
               <input type="checkbox" class="toggle toggle-xs" />
@@ -48,25 +53,25 @@ function patternConfig() {
               Columns
             </label>
           </fieldset> -->
-          <fieldset class="fieldset border-base-300 border-1 p-1">
-            <legend class="fieldset-legend">Repeat</legend>
-            <label class="label">
-              <input
-                type="checkbox"
-                class="toggle toggle-xs"
-                ?checked=${patternConfig.repeat_horizontal}
-                @change=${(e: Event) => {
-                  store.dispatch(
-                    setPatternConfig({
-                      ...patternConfig,
-                      repeat_horizontal: (e.target as HTMLInputElement).checked,
-                    })
-                  );
-                }} />
-              Horizontally
-            </label>
-          </fieldset>
-          <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend">Repeat</legend>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.repeat_horizontal}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    repeat_horizontal: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Horizontally
+          </label>
+        </fieldset>
+        <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Margin</legend>
             <label class="input input-xs">
               <span class="label">Margin left</span>
@@ -85,84 +90,80 @@ function patternConfig() {
                 title="Must be between be 1 to 10" />
             </label>
           </fieldset> -->
-          <fieldset class="fieldset border-base-300 border-1 p-1">
-            <legend class="fieldset-legend">Misc</legend>
-            <label class="label">
-              <input
-                type="checkbox"
-                class="toggle toggle-xs"
-                ?checked=${patternConfig.centerX}
-                @change=${(e: Event) => {
-                  store.dispatch(
-                    setPatternConfig({
-                      ...patternConfig,
-                      centerX: (e.target as HTMLInputElement).checked,
-                    })
-                  );
-                }} />
-              Center X
-            </label>
-            <label class="label">
-              <input
-                type="checkbox"
-                class="toggle toggle-xs"
-                ?checked=${patternConfig.endNeedleSelection}
-                @change=${(e: Event) => {
-                  store.dispatch(
-                    setPatternConfig({
-                      ...patternConfig,
-                      endNeedleSelection: (e.target as HTMLInputElement)
-                        .checked,
-                    })
-                  );
-                }} />
-              End needle selection
-            </label>
-          </fieldset>
-        </div>
-        <div class="flex flex-row gap-1">
-          <fieldset class="fieldset border-base-300 border-1 p-1">
-            <legend class="fieldset-legend p-1">Point cams</legend>
-            <label class="input input-xs">
-              <span class="label">Left</span>
-              <input
-                value=${machineState.pointCams[0]}
-                @change=${(e: Event) => {
-                  const value = (e.target as HTMLInputElement).value;
-                  store.dispatch(
-                    setMachineState({
-                      ...machineState,
-                      pointCams: [parseInt(value), machineState.pointCams[1]],
-                    })
-                  );
-                }}
-                type="number"
-                class="validator"
-                min="-100"
-                max="100"
-                step="1" />
-            </label>
-            <label class="input input-xs">
-              <span class="label">Right</span>
-              <input
-                value=${machineState.pointCams[1]}
-                @change=${(e: Event) => {
-                  const value = (e.target as HTMLInputElement).value;
-                  store.dispatch(
-                    setMachineState({
-                      ...machineState,
-                      pointCams: [machineState.pointCams[0], parseInt(value)],
-                    })
-                  );
-                }}
-                type="number"
-                class="validator"
-                min="-100"
-                max="100"
-                step="1" />
-            </label>
-          </fieldset>
-        </div>
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend">Misc</legend>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.centerX}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    centerX: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Center X
+          </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.endNeedleSelection}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    endNeedleSelection: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            End needle selection
+          </label>
+        </fieldset>
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend p-1">Point cams</legend>
+          <label class="input input-xs">
+            <span class="label">Left</span>
+            <input
+              value=${machineState.pointCams[0]}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setMachineState({
+                    ...machineState,
+                    pointCams: [parseInt(value), machineState.pointCams[1]],
+                  })
+                );
+              }}
+              type="number"
+              class="validator"
+              min="-100"
+              max="100"
+              step="1" />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Right</span>
+            <input
+              value=${machineState.pointCams[1]}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setMachineState({
+                    ...machineState,
+                    pointCams: [machineState.pointCams[0], parseInt(value)],
+                  })
+                );
+              }}
+              type="number"
+              class="validator"
+              min="-100"
+              max="100"
+              step="1" />
+          </label>
+        </fieldset>
       </div>
     </div>
   `;
@@ -171,29 +172,29 @@ function patternConfig() {
 function patternUpload() {
   const state = store.getState();
 
-  return html`<div class="flex-1 flex flex-col p-1 gap-1 bg-base-200">
-    <input
-      type="file"
-      class="file-input file-input-xs"
-      @change=${async (e: Event) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          try {
-            const bitmap = await createBitmapFromImage(file);
-            store.dispatch(setBasePattern(bitmap));
-          } catch (error) {
-            console.error("Failed to load PNG:", error);
+  return html`
+    <div class="flex flex-row gap-1 items-center justify-center p-1">
+      <input
+        type="file"
+        class="file-input file-input-xs"
+        @change=${async (e: Event) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            try {
+              const bitmap = await createBitmapFromImage(file);
+              store.dispatch(setBasePattern(bitmap));
+            } catch (error) {
+              console.error("Failed to load PNG:", error);
+            }
           }
-        }
-      }} />
-    <div class="h-[300px] flex items-center justify-center">
-      <canvas id="upload-result" class="outline-1 outline-black"></canvas>
-    </div>
-    <div class="flex flex-row gap-1">
+        }} />
       <span class="text-sm">Width: ${state.basePattern.width}</span>
       <span class="text-sm">Height: ${state.basePattern.height}</span>
     </div>
-  </div>`;
+    <div class="flex flex-1 items-center justify-center overflow-hidden">
+      <canvas id="preview-canvas" class="border-1 border-black"></canvas>
+    </div>
+  `;
 }
 
 let row = 0;
@@ -348,26 +349,139 @@ function interactiveKnitting() {
     </div>`;
 }
 
-function knittingUI() {
-  return html` <div
-    class="flex flex-col flex-1 gap-2 bg-base-300 overflow-hidden">
-    <div class="flex flex-row gap-1">${patternUpload()} ${patternConfig()}</div>
-    <div class="flex flex-col overflow-hidden">${interactiveKnitting()}</div>
-  </div>`;
+function patternDesign() {
+  const state = store.getState();
+  const tool = state.designState.selectedTool;
+
+  return html`
+    <div class="flex flex-row items-center bg-base-200 gap-1 shadow-sm">
+      <label class="input input-xs w-[130px]">
+        <span class="label">Width</span>
+        <input
+          value=${state.basePattern.width}
+          @change=${() => {
+            store.dispatch(
+              setBasePattern(
+                createEmptyBitmap(
+                  state.basePattern.width,
+                  state.basePattern.height
+                )
+              )
+            );
+          }}
+          type="number"
+          min="1"
+          max="200"
+          step="1" />
+      </label>
+      <label class="input input-xs w-[130px]">
+        <span class="label">Height</span>
+        <input
+          value=${state.basePattern.height}
+          @change=${() => {
+            store.dispatch(
+              setBasePattern(
+                createEmptyBitmap(
+                  state.basePattern.width,
+                  state.basePattern.height
+                )
+              )
+            );
+          }}
+          type="number"
+          min="1"
+          max="1000"
+          step="1" />
+      </label>
+
+      <div class="flex flex-1"></div>
+
+      <div class="tabs tabs-xs tabs-box">
+        ${Object.keys(bitmapEditingTools).map(
+          (toolName) =>
+            html`<input
+              type="radio"
+              aria-label=${toolName}
+              ?checked=${tool === toolName}
+              class="tab"
+              @change=${() => {
+                console.log("toolName", toolName);
+                store.dispatch(setTool(toolName));
+              }}
+              name="tool"
+              value=${toolName} />`
+        )}
+      </div>
+    </div>
+    <div class="flex flex-1 items-center justify-center overflow-hidden">
+      <canvas id="preview-canvas" class="border-1 border-black"></canvas>
+    </div>
+  `;
 }
 
-function toolbar() {
-  return html`<div
-    class="bg-primary text-primary-content flex items-center shadow-sm gap-1 p-1">
-    <span class="font-bold">Silver Reed/Write Controller</span>
-    <div class="flex-1"></div>
+function patternLibrary() {
+  return html`library`;
+}
+
+function basePatternMode() {
+  const mode = store.getState().mode;
+  switch (mode) {
+    case "upload":
+      return patternUpload();
+    case "design":
+      return patternDesign();
+    case "library":
+      return patternLibrary();
+  }
+}
+
+function patternSetup() {
+  const mode = store.getState().mode;
+
+  return html`<div class="flex flex-1 flex-col">
+    <div
+      class="flex flex-row gap-1 items-center bg-neutral text-neutral-content p-1">
+      <span class="font-bold">Silver Reed/Write Controller</span>
+      <div role="tablist" class="tabs tabs-border tabs-xs flex-1">
+        <button
+          role="tab"
+          class="tab ${mode === "upload" ? "tab-active" : ""}"
+          @click=${() => store.dispatch(setMode("upload"))}>
+          Upload
+        </button>
+        <button
+          role="tab"
+          class="tab ${mode === "design" ? "tab-active" : ""}"
+          @click=${() => store.dispatch(setMode("design"))}>
+          Design
+        </button>
+        <button
+          role="tab"
+          class="tab ${mode === "library" ? "tab-active" : ""}"
+          @click=${() => store.dispatch(setMode("library"))}>
+          Library
+        </button>
+      </div>
+    </div>
+    <div
+      id="base-pattern-content-container"
+      class="flex-1 flex flex-col overflow-hidden">
+      ${basePatternMode()}
+    </div>
   </div>`;
 }
 
 function view() {
   return html`
     <div class="flex flex-col h-screen overflow-hidden">
-      ${toolbar()} ${knittingUI()}
+      <div id="pattern-setup-container" class="flex flex-row bg-base-300">
+        ${patternSetup()} ${patternConfig()}
+      </div>
+      <div
+        id="interactive-knitting-container"
+        class="flex flex-col overflow-hidden bg-base-300">
+        ${interactiveKnitting()}
+      </div>
     </div>
   `;
 }
@@ -380,7 +494,16 @@ function r() {
 document.addEventListener("DOMContentLoaded", () => {
   r();
 
+  Split(["#pattern-setup-container", "#interactive-knitting-container"], {
+    sizes: [50, 50],
+    direction: "vertical",
+    onDrag: () => {
+      const state = store.getState();
+      console.log("onDrag");
+      drawPreviewPattern(state.basePattern);
+    },
+  });
   const initialState = store.getState();
-  drawUploadedPattern(initialState.basePattern);
+  drawPreviewPattern(initialState.basePattern);
   drawComputedPattern(selectComputedPattern(initialState));
 });

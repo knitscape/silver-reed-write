@@ -145,14 +145,4 @@ export const editingTools = {
     }
     return onMove;
   },
-  pan(bitmap, pos, paletteIndex) {
-    let startX = pos[0];
-    let startY = pos[1];
-
-    function onMove(currentPos) {
-      return [];
-    }
-
-    return onMove;
-  },
 };
