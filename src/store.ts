@@ -15,31 +15,21 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
   switch (action.type) {
     case "controller/setBasePattern":
       drawUploadedPattern(newState.basePattern);
-      drawComputedPattern(
-        selectComputedPattern(newState),
-        newState.knittingState
-      );
+      drawComputedPattern(selectComputedPattern(newState));
       break;
     case "controller/setPatternConfig":
-      drawComputedPattern(
-        selectComputedPattern(newState),
-        newState.knittingState
-      );
+      drawComputedPattern(selectComputedPattern(newState));
       break;
     case "controller/setMachineState":
-      drawComputedPattern(
-        selectComputedPattern(newState),
-        newState.knittingState
-      );
+      drawComputedPattern(selectComputedPattern(newState));
       break;
     case "controller/setKnittingState":
+      drawComputedPattern(selectComputedPattern(newState));
+      break;
+    case "controller/advanceRow":
       if (newState.knittingState.patterning) {
         await writePatternRow(selectCurrentRow(newState));
       }
-      drawComputedPattern(
-        selectComputedPattern(newState),
-        newState.knittingState
-      );
       break;
   }
 
@@ -51,4 +41,3 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(afterReducerMiddleware),
 });
-

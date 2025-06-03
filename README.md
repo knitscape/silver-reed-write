@@ -79,7 +79,7 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
   - [x] Visualize pattern being sent to microcontroller and highlight next row
   - [x] Send next row on connect and on finishing a row
   - [x] reverse pattern row depending on carriage side
-  - [ ] Select which row to send next in web interface
+  - [x] Select which row to send next in web interface
   - [ ] Notify if point cams are not in the right place
 - Pattern config
   - [x] upload patterns (BMP, PNG, JPG)

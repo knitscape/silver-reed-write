@@ -93,6 +93,7 @@ export async function writePatternRow(row) {
     msg_type: "row",
     row: row,
   };
+  console.log("Writing row:", row);
   await serial.writeJSON(rowData);
 }
 
@@ -118,6 +119,7 @@ async function processState(jsonData) {
   );
 
   if (state.knittingState.patterning) {
+    console.log("Advancing row");
     store.dispatch(advanceRow());
   }
 }

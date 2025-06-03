@@ -13,15 +13,6 @@ import { drawComputedPattern } from "./drawing";
 import { drawUploadedPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
 
-function gutters(height: number) {
-  return new Array(height).fill(0).map(
-    (_, row) => html`<div
-      class="flex items-center justify-center w-[50px] h-[20px] leading-0 hover:cursor-pointer hover:bg-gray-100">
-      <span class="text-xs font-mono self-end">${row + 1}</span>
-    </div>`
-  );
-}
-
 function patternConfig() {
   const state = store.getState();
   const patternConfig = state.patternConfig;
@@ -205,19 +196,6 @@ function patternUpload() {
   </div>`;
 }
 
-const connectedBtns = html`
-  <span id="status" class="text-sm">Connected!</span>
-  <button @click=${serial.disconnect} class="btn btn-xs btn-neutral">
-    Disconnect
-  </button>
-`;
-
-const disconnectedBtns = html`
-  <button @click=${() => serial.connect()} class="btn btn-xs btn-accent">
-    Connect to Machine
-  </button>
-`;
-
 let row = 0;
 
 function getRow(e: PointerEvent, height: number) {
@@ -231,6 +209,73 @@ function getRow(e: PointerEvent, height: number) {
   return row;
 }
 
+function gutters(height: number) {
+  return new Array(height).fill(0).map(
+    (_, row) => html`<div
+      class="flex items-center justify-center  h-[20px] leading-0">
+      <span class="text-xs font-mono self-end">${row + 1}</span>
+    </div>`
+  );
+}
+
+function needles(pointCams: [number, number]) {
+  const width = pointCams[1] - pointCams[0];
+  return new Array(width)
+    .fill(0)
+    .map(
+      (_, col) => html` <span class="w-[20px]" style="font-size: 9px;"
+        >${col + pointCams[0] >= 0
+          ? col + pointCams[0] + 1
+          : col + pointCams[0]}</span
+      >`
+    );
+}
+
+function connectedBtns() {
+  const state = store.getState();
+  const active = state.knittingState.patterning;
+  return html`
+    <button @click=${serial.disconnect} class="btn btn-xs btn-neutral">
+      Disconnect
+    </button>
+    <div class="flex-1"></div>
+    <span id="status" class="text-sm"
+      >${active ? "Knitting!" : "Not knitting"}</span
+    >
+    ${active
+      ? html`<button
+          @click=${() =>
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                patterning: false,
+              })
+            )}
+          class="btn btn-xs btn-info">
+          Stop Knitting!
+        </button>`
+      : html`<button
+          @click=${() =>
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                patterning: true,
+              })
+            )}
+          class="btn btn-xs btn-info">
+          Begin Interactive Knitting!
+        </button>`}
+  `;
+}
+
+function disconnectedBtns() {
+  return html`
+    <button @click=${() => serial.connect()} class="btn btn-xs btn-accent">
+      Connect!
+    </button>
+  `;
+}
+
 function interactiveKnitting() {
   const state = store.getState();
   const basePattern = state.basePattern;
@@ -241,33 +286,21 @@ function interactiveKnitting() {
   const connected = serial.connected();
 
   return html` <div
-      class="flex items-center bg-secondary text-secondary-content p-1 shadow-sm">
-      <span class="font-bold">Interactive Knitting</span>
-      <div class="flex-1"></div>
-      ${connected ? connectedBtns : disconnectedBtns}
+      class="flex gap-2 items-center bg-neutral text-neutral-content p-1 shadow-sm">
+      <span class="font-bold">
+        ${connected ? "Connected to machine" : "Not connected to machine"}
+      </span>
+      ${connected ? connectedBtns() : disconnectedBtns()}
     </div>
-    <button
-      @click=${() =>
-        store.dispatch(
-          setKnittingState({
-            ...state.knittingState,
-            patterning: true,
-          })
-        )}
-      ?disabled=${!connected}
-      class="btn btn-xs btn-info">
-      Knit!
-    </button>
+
     <div class="flex flex-row gap-1">
       <span>Side: ${state.knittingState.carriageSide}</span>
-      <span>Row: ${currentRow}</span>
     </div>
-    <div class="flex flex-row justify-center m-10">
+    <div class="flex flex-row justify-center m-5 overflow-hidden">
       <div
-        class="border-1 border-black overflow-y-auto shadow-[0_0_10px_0_rgba(0,0,0,0.5)]">
+        class="border-1 border-black overflow-y-auto bg-base-200 shadow-[0_0_10px_0_rgba(0,0,0,0.5)]">
         <div
-          style="height: ${height * 20}px"
-          class="group flex flex-row relative box-content cursor-pointer"
+          class="group grid grid-cols-[50px_auto_50px] flex-row relative box-content cursor-pointer"
           @pointermove=${(e: PointerEvent) => getRow(e, height)}
           @pointerdown=${(e: PointerEvent) => {
             const row = height - getRow(e, height) - 1;
@@ -280,24 +313,36 @@ function interactiveKnitting() {
           }}>
           <div
             id="left-gutter"
-            class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-r-1">
+            class="flex flex-col-reverse sticky left-0 border-black border-r-1 bg-base-200"
+            style="height: ${height * 20}px">
             ${gutters(height)}
           </div>
           <canvas id="pattern-canvas"></canvas>
           <div
             id="right-gutter"
-            class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-l-1">
+            class="flex flex-col-reverse sticky right-0 border-black border-l-1 bg-base-200"
+            style="height: ${height * 20}px">
             ${gutters(height)}
           </div>
           <div
             id="current-row"
             class="absolute w-full h-[20px] bg-[#ff000050] pointer-events-none shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
-            style="bottom: ${currentRow * 20}px; width: ${width * 20 +
-            101}px"></div>
+            style="top: ${(height - currentRow - 1) * 20}px; width: ${width *
+              20 +
+            100}px"></div>
           <div
             id="hover-row"
             class="absolute w-full h-[20px] bg-[#ffff0050] pointer-events-none group-hover:visible invisible shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
-            style="top: ${row * 20}px; width: ${width * 20 + 101}px"></div>
+            style="top: ${row * 20}px; width: ${width * 20 + 100}px"></div>
+          <div
+            class="bg-base-200 sticky bottom-0 border-t-1 border-black"></div>
+          <div
+            id="bottom-gutter"
+            class="flex sticky bottom-0 h-[20px] text-center items-center font-mono border-t-1 border-black bg-base-200">
+            ${needles(state.machineState.pointCams)}
+          </div>
+          <div
+            class="bg-base-200 sticky bottom-0 border-t-1 border-black"></div>
         </div>
       </div>
     </div>`;
@@ -337,8 +382,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const initialState = store.getState();
   drawUploadedPattern(initialState.basePattern);
-  drawComputedPattern(
-    selectComputedPattern(initialState),
-    initialState.knittingState
-  );
+  drawComputedPattern(selectComputedPattern(initialState));
 });

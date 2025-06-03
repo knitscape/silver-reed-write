@@ -7,6 +7,7 @@ import {
   DesignState,
   FairisleConfig,
 } from "./types";
+import { selectComputedPattern } from "./selectors";
 
 export const initialState = {
   patternConfig: {
@@ -32,13 +33,26 @@ export const initialState = {
   } as MachineState,
   basePattern: {
     data: [
-      // 8x8 zigzag pattern
+      // 8x8 zigzag pattern repeated 3 times vertically
       0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
       1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
       1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
+      // Second repeat
+      0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
+      1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
+      1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
+      // Third repeat
+      0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
+      1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
+      1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1,
+      1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0,
+      1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0,
+      0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0,
+      1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0,
+      0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
     ],
     width: 8,
-    height: 8,
+    height: 40,
     palette: [
       [0, 0, 0],
       [255, 255, 255],
@@ -77,7 +91,10 @@ const slice = createSlice({
     advanceRow: (state, action) => {
       state.knittingState.currentRowNumber =
         state.knittingState.currentRowNumber + 1;
-      if (state.knittingState.currentRowNumber >= state.basePattern.height) {
+      if (
+        state.knittingState.currentRowNumber >=
+        selectComputedPattern(state).height
+      ) {
         state.knittingState.currentRowNumber = 0;
       }
     },
