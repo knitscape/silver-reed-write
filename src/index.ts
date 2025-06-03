@@ -47,29 +47,73 @@ function patternConfig() {
         class="flex flex-row items-center bg-neutral text-neutral-content p-1">
         <span class="font-bold">Pattern config</span>
       </div>
-      <div class="flex flex-col gap-1 p-1">
-        <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
-            <legend class="fieldset-legend">Mirroring</legend>
-            <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              Horizontally
-            </label>
-            <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              Vertically
-            </label>
-          </fieldset> -->
-        <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
-            <legend class="fieldset-legend">Doubling</legend>
-            <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              Rows
-            </label>
-            <label class="label">
-              <input type="checkbox" class="toggle toggle-xs" />
-              Columns
-            </label>
-          </fieldset> -->
+      <div class="flex flex-col gap-1 p-1 overflow-y-auto">
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend">Mirroring</legend>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.mirror_horizontal}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    mirror_horizontal: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Horizontally
+          </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.mirror_vertical}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    mirror_vertical: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Vertically
+          </label>
+        </fieldset>
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend">Doubling</legend>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.double_rows}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    double_rows: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Rows
+          </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.double_cols}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    double_cols: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Columns
+          </label>
+        </fieldset>
         <fieldset class="fieldset border-base-300 border-1 p-1">
           <legend class="fieldset-legend">Repeat</legend>
           <label class="label">
@@ -103,25 +147,39 @@ function patternConfig() {
             Vertically
           </label>
         </fieldset>
-        <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
-            <legend class="fieldset-legend">Margin</legend>
-            <label class="input input-xs">
-              <span class="label">Margin left</span>
-              <input
-                type="number"
-                class="validator"
-                min="0"
-                title="Must be between be 1 to 10" />
-            </label>
-            <label class="input input-xs">
-              <span class="label">Margin right</span>
-              <input
-                type="number"
-                class="validator"
-                min="0"
-                title="Must be between be 1 to 10" />
-            </label>
-          </fieldset> -->
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend">Margin</legend>
+          <label class="input input-xs">
+            <span class="label">Margin left</span>
+            <input
+              type="number"
+              min="0"
+              value=${patternConfig.marginLeft}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    marginLeft: parseInt((e.target as HTMLInputElement).value),
+                  })
+                );
+              }} />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Margin right</span>
+            <input
+              type="number"
+              min="0"
+              value=${patternConfig.marginRight}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    marginRight: parseInt((e.target as HTMLInputElement).value),
+                  })
+                );
+              }} />
+          </label>
+        </fieldset>
         <fieldset class="fieldset border-base-300 border-1 p-1">
           <legend class="fieldset-legend">Misc</legend>
           <label class="label">
@@ -153,6 +211,21 @@ function patternConfig() {
                 );
               }} />
             End needle selection
+          </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.negative}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    negative: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Negative
           </label>
         </fieldset>
         <fieldset class="fieldset border-base-300 border-1 p-1">

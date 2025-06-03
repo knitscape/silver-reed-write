@@ -83,12 +83,12 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
   - [ ] Notify if point cams are not in the right place
 - Pattern config
   - [x] upload patterns (BMP, PNG, JPG)
-  - [ ] mirroring
-  - [ ] doubling rows/cols
+  - [x] mirroring
+  - [x] doubling rows/cols
   - [x] horizontal/vertical repeat
   - [x] end needle selection
   - [x] center repeat
-  - [ ] margin
+  - [x] margin
   - [ ] small preview
   - [ ] save preview image
 - Pattern design (black and white)

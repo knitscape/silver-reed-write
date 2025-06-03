@@ -27,54 +27,6 @@ export function createEmptyBitmap(
   };
 }
 
-// export function stampBitmap(
-//   targetBitmap: Bitmap,
-//   stampBitmap: Bitmap,
-//   [x, y]: Position
-// ) {
-//   // First update the palette by copying any new colors from stamp bitmap
-//   const paletteMap = new Map<number, number>();
-//   for (let i = 0; i < stampBitmap.palette.length; i++) {
-//     const color = stampBitmap.palette[i];
-//     const existingIndex = targetBitmap.palette.findIndex(
-//       (c) => c[0] === color[0] && c[1] === color[1] && c[2] === color[2]
-//     );
-//     if (existingIndex === -1) {
-//       paletteMap.set(i, targetBitmap.palette.length);
-//       targetBitmap.palette.push(color);
-//     } else {
-//       paletteMap.set(i, existingIndex);
-//     }
-//   }
-
-//   // Copy pixels from stamp to target bitmap
-//   for (let sy = 0; sy < stampBitmap.height; sy++) {
-//     for (let sx = 0; sx < stampBitmap.width; sx++) {
-//       const targetX = x + sx;
-//       const targetY = y + sy;
-
-//       // Skip if outside target bounds
-//       if (
-//         targetX < 0 ||
-//         targetX >= targetBitmap.width ||
-//         targetY < 0 ||
-//         targetY >= targetBitmap.height
-//       ) {
-//         continue;
-//       }
-
-//       const stampIndex = paletteIndexAt(stampBitmap, [sx, sy]);
-//       if (stampIndex === -1) continue;
-
-//       const targetIndex = paletteMap.get(stampIndex);
-//       if (targetIndex === undefined) continue;
-
-//       // Modify bitmap directly
-//       targetBitmap.data[targetX + targetY * targetBitmap.width] = targetIndex;
-//     }
-//   }
-// }
-
 export function paletteIndexAt(bitmap: Bitmap, [x, y]: Position) {
   if (x > bitmap.width - 1 || x < 0 || y > bitmap.height - 1 || y < 0) {
     return -1;
@@ -84,25 +36,6 @@ export function paletteIndexAt(bitmap: Bitmap, [x, y]: Position) {
     return -1;
   }
   return index;
-}
-
-function brush(bitmap: Bitmap, [x, y]: Position, paletteIndex: number) {
-  if (paletteIndex < 0 || paletteIndex >= bitmap.palette.length) {
-    console.error("Invalid palette index");
-    return [];
-  }
-
-  const indexToFill = paletteIndexAt(bitmap, [x, y]);
-  if (indexToFill === -1) {
-    console.error("Index out of bounds");
-    return [];
-  }
-
-  if (indexToFill === paletteIndex) return []; // already filled
-
-  let changes = [[x, y, paletteIndex]];
-
-  return changes;
 }
 
 function flood(bitmap: Bitmap, [x, y]: Position, paletteIndex: number) {
@@ -216,7 +149,7 @@ function shift(bitmap: Bitmap, dx: number, dy: number) {
 
 export const bitmapEditingTools = {
   brush(bitmap: Bitmap, pos: Position, paletteIndex: number) {
-    function onMove(currentPos) {
+    function onMove(currentPos: Position) {
       const changes = line(bitmap, pos, currentPos, paletteIndex);
       pos = currentPos;
       return changes;
@@ -225,26 +158,26 @@ export const bitmapEditingTools = {
     return onMove;
   },
   flood(bitmap: Bitmap, pos: Position, paletteIndex: number) {
-    function onMove(currentPos) {
+    function onMove(currentPos: Position) {
       return flood(bitmap, pos, paletteIndex);
     }
 
     return onMove;
   },
   rect(bitmap: Bitmap, pos: Position, paletteIndex: number) {
-    function onMove(currentPos) {
+    function onMove(currentPos: Position) {
       return rect(bitmap, pos, currentPos, paletteIndex);
     }
     return onMove;
   },
   line(bitmap: Bitmap, pos: Position, paletteIndex: number) {
-    function onMove(currentPos) {
+    function onMove(currentPos: Position) {
       return line(bitmap, pos, currentPos, paletteIndex);
     }
     return onMove;
   },
   shift(bitmap: Bitmap, pos: Position, paletteIndex: number) {
-    function onMove(currentPos) {
+    function onMove(currentPos: Position) {
       return shift(bitmap, pos[0] - currentPos[0], pos[1] - currentPos[1]);
     }
     return onMove;
