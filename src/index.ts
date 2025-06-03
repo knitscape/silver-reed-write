@@ -13,18 +13,13 @@ import { drawComputedPattern } from "./drawing";
 import { drawUploadedPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
 
-function rowNumber(row: number, currentRow: number) {
-  const isCurrentRow = row === currentRow;
-  return html`<div
-    class="flex items-center justify-center w-[50px] h-[20px] leading-0 hover:cursor-pointer hover:bg-gray-100 ${isCurrentRow
-      ? "bg-gray-300"
-      : ""}">
-    <span class="text-xs font-mono self-end">${row + 1}</span>
-  </div>`;
-}
-
-function gutters(height: number, currentRow: number) {
-  return new Array(height).fill(0).map((_, i) => rowNumber(i, currentRow));
+function gutters(height: number) {
+  return new Array(height).fill(0).map(
+    (_, row) => html`<div
+      class="flex items-center justify-center w-[50px] h-[20px] leading-0 hover:cursor-pointer hover:bg-gray-100">
+      <span class="text-xs font-mono self-end">${row + 1}</span>
+    </div>`
+  );
 }
 
 function patternConfig() {
@@ -223,10 +218,24 @@ const disconnectedBtns = html`
   </button>
 `;
 
+let row = 0;
+
+function getRow(e: PointerEvent, height: number) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  let y = e.clientY - rect.top;
+  if (y < 0) {
+    y = 0;
+  }
+  row = Math.floor(y / 20);
+  row = Math.min(row, height - 1);
+  return row;
+}
+
 function interactiveKnitting() {
   const state = store.getState();
   const basePattern = state.basePattern;
   const height = basePattern.height;
+  const width = selectComputedPattern(state).width;
 
   const currentRow = state.knittingState.currentRowNumber;
   const connected = serial.connected();
@@ -253,24 +262,43 @@ function interactiveKnitting() {
       <span>Side: ${state.knittingState.carriageSide}</span>
       <span>Row: ${currentRow}</span>
     </div>
-    <div class="flex flex-row overflow-y-auto">
+    <div class="flex flex-row justify-center m-10">
       <div
-        style="height: ${height * 20}px"
-        class="flex flex-row relative mx-auto">
+        class="border-1 border-black overflow-y-auto shadow-[0_0_10px_0_rgba(0,0,0,0.5)]">
         <div
-          id="left-gutter"
-          class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-1">
-          ${gutters(height, currentRow)}
+          style="height: ${height * 20}px"
+          class="group flex flex-row relative box-content cursor-pointer"
+          @pointermove=${(e: PointerEvent) => getRow(e, height)}
+          @pointerdown=${(e: PointerEvent) => {
+            const row = height - getRow(e, height) - 1;
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                currentRowNumber: row,
+              })
+            );
+          }}>
+          <div
+            id="left-gutter"
+            class="flex flex-col-reverse sticky left-0 bg-base-200 border-black border-r-1">
+            ${gutters(height)}
+          </div>
+          <canvas id="pattern-canvas"></canvas>
+          <div
+            id="right-gutter"
+            class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-l-1">
+            ${gutters(height)}
+          </div>
+          <div
+            id="current-row"
+            class="absolute w-full h-[20px] bg-[#ff000050] pointer-events-none shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
+            style="bottom: ${currentRow * 20}px; width: ${width * 20 +
+            101}px"></div>
+          <div
+            id="hover-row"
+            class="absolute w-full h-[20px] bg-[#ffff0050] pointer-events-none group-hover:visible invisible shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
+            style="top: ${row * 20}px; width: ${width * 20 + 101}px"></div>
         </div>
-        <canvas id="pattern-canvas" class="border-y-1 border-black"></canvas>
-        <div
-          id="right-gutter"
-          class="flex flex-col-reverse sticky right-0 bg-base-200 border-black border-1">
-          ${gutters(height, currentRow)}
-        </div>
-        <div
-          class="absolute w-full h-[20px] bg-[#ff000050] pointer-events-none"
-          style="bottom: ${currentRow * 20}px"></div>
       </div>
     </div>`;
 }
