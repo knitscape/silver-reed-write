@@ -1,12 +1,14 @@
+import { store } from "./store";
+import { setMachineState, advanceRow } from "./slice";
+
 let port;
 let reader;
 let writer;
 let reading = false;
-import { store } from "./store";
-import { setMachineState, advanceRow } from "./slice";
 
 async function connect() {
   try {
+    // @ts-ignore
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: 115200 });
     reader = port.readable.getReader();
@@ -88,7 +90,7 @@ async function disconnect() {
   }
 }
 
-export async function writePatternRow(row) {
+export async function writePatternRow(row: number[]) {
   const rowData = {
     msg_type: "row",
     row: row,
@@ -97,7 +99,7 @@ export async function writePatternRow(row) {
   await serial.writeJSON(rowData);
 }
 
-function processJSON(jsonData) {
+function processJSON(jsonData: { msg_type: string; msg: any }) {
   const msg_type = jsonData.msg_type;
   if (msg_type === "state") {
     processState(jsonData.msg);

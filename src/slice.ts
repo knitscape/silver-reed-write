@@ -18,10 +18,12 @@ export const initialState = {
     mirror_horizontal: false,
     centerX: true,
     repeat_horizontal: true,
-    repeat_vertical: true,
+    repeat_vertical: false,
     endNeedleSelection: false,
     marginLeft: 0,
     marginRight: 0,
+    height: 20,
+    wrap: true,
   } as PatternConfig,
   machineState: {
     pointCams: [-20, 20],
@@ -33,26 +35,12 @@ export const initialState = {
   } as MachineState,
   basePattern: {
     data: [
-      // 8x8 zigzag pattern repeated 3 times vertically
       0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
       1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
       1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
-      // Second repeat
-      0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
-      1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
-      1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
-      // Third repeat
-      0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
-      1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
-      1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1,
-      1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0,
-      1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0,
-      0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0,
-      1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0,
-      0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1,
     ],
     width: 8,
-    height: 40,
+    height: 8,
     palette: [
       [0, 0, 0],
       [255, 255, 255],
@@ -87,10 +75,9 @@ const slice = createSlice({
       state.machineState = action.payload;
     },
     setKnittingState: (state, action) => {
-      console.log("setKnittingState", action.payload);
       state.knittingState = action.payload;
     },
-    advanceRow: (state, action) => {
+    advanceRow: (state) => {
       state.knittingState.currentRowNumber =
         state.knittingState.currentRowNumber + 1;
       if (
@@ -104,7 +91,6 @@ const slice = createSlice({
       state.mode = action.payload;
     },
     setTool: (state, action) => {
-      console.log("setTool", action.payload);
       state.designState.selectedTool = action.payload;
     },
     drawChanges(state, action) {

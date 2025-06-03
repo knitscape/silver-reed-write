@@ -16,13 +16,9 @@ import {
   createBitmapFromImage,
   createEmptyBitmap,
   bitmapEditingTools,
+  bitmapToPNGDataURL,
 } from "./bitmap";
-import {
-  isLeftClick,
-  getCellFromEvent,
-  getCurrentCellSize,
-  rgbToHex,
-} from "./utils";
+import { isLeftClick, getCellFromEvent, getCurrentCellSize } from "./utils";
 import { store } from "./store";
 import { drawComputedPattern, drawPreviewPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
@@ -91,6 +87,21 @@ function patternConfig() {
               }} />
             Horizontally
           </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.repeat_vertical}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    repeat_vertical: (e.target as HTMLInputElement).checked,
+                  })
+                );
+              }} />
+            Vertically
+          </label>
         </fieldset>
         <!-- <fieldset class="fieldset border-base-300 border-1 p-1">
             <legend class="fieldset-legend">Margin</legend>
@@ -145,7 +156,7 @@ function patternConfig() {
           </label>
         </fieldset>
         <fieldset class="fieldset border-base-300 border-1 p-1">
-          <legend class="fieldset-legend p-1">Point cams</legend>
+          <legend class="fieldset-legend p-1">Extents</legend>
           <label class="input input-xs">
             <span class="label">Left</span>
             <input
@@ -160,7 +171,6 @@ function patternConfig() {
                 );
               }}
               type="number"
-              class="validator"
               min="-100"
               max="100"
               step="1" />
@@ -179,10 +189,26 @@ function patternConfig() {
                 );
               }}
               type="number"
-              class="validator"
               min="-100"
               max="100"
               step="1" />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Height</span>
+            <input
+              value=${patternConfig.height}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    height: parseInt(value),
+                  })
+                );
+              }}
+              type="number"
+              min="0"
+              max="1000" />
           </label>
         </fieldset>
       </div>
@@ -300,15 +326,16 @@ function disconnectedBtns() {
 
 function interactiveKnitting() {
   const state = store.getState();
-  const basePattern = state.basePattern;
-  const height = basePattern.height;
+  const height = state.patternConfig.height;
   const width = selectComputedPattern(state).width;
 
   const currentRow = state.knittingState.currentRowNumber;
   const connected = serial.connected();
 
   return html` <div
-      class="flex gap-2 items-center bg-neutral text-neutral-content p-1 shadow-sm">
+      class="flex gap-2 items-center p-1 shadow-sm ${connected
+        ? "bg-primary text-primary-content"
+        : "bg-neutral text-neutral-content"}">
       <span class="font-bold">
         ${connected ? "Connected to machine" : "Not connected to machine"}
       </span>
@@ -348,13 +375,17 @@ function interactiveKnitting() {
           </div>
           <div
             id="current-row"
-            class="absolute w-full h-[20px] bg-[#ff000050] pointer-events-none shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
+            class="absolute w-full h-[20px] bg-[#ff000050] pointer-events-none shadow-[0_0_5px_0_rgba(0,0,0,0.5)] ${connected
+              ? "visible"
+              : "invisible"}"
             style="top: ${(height - currentRow - 1) * 20}px; width: ${width *
               20 +
             100}px"></div>
           <div
             id="hover-row"
-            class="absolute w-full h-[20px] bg-[#ffff0050] pointer-events-none group-hover:visible invisible shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
+            class="absolute w-full h-[20px] bg-[#ffff0050] pointer-events-none ${connected
+              ? "group-hover:visible"
+              : ""} invisible shadow-[0_0_5px_0_rgba(0,0,0,0.5)]"
             style="top: ${row * 20}px; width: ${width * 20 + 100}px"></div>
           <div
             class="bg-base-200 sticky bottom-0 border-t-1 border-black"></div>
@@ -461,6 +492,35 @@ function patternDesign() {
           max="1000"
           step="1" />
       </label>
+      <button
+        class="btn btn-xs btn-neutral"
+        @click=${() => {
+          store.dispatch(
+            setBasePattern(
+              createEmptyBitmap(
+                state.basePattern.width,
+                state.basePattern.height,
+                [0, 0, 0],
+                [
+                  [0, 0, 0],
+                  [255, 255, 255],
+                ]
+              )
+            )
+          );
+        }}>
+        Clear
+      </button>
+      <button
+        class="btn btn-xs btn-accent"
+        @click=${() => {
+          const link = document.createElement("a");
+          link.href = bitmapToPNGDataURL(state.basePattern);
+          link.download = "pattern.png";
+          link.click();
+        }}>
+        Download
+      </button>
       <div class="flex flex-1"></div>
       <div class="tabs tabs-xs tabs-box">
         ${Object.keys(bitmapEditingTools).map(
@@ -484,7 +544,7 @@ function patternDesign() {
         ${state.basePattern.palette.map(
           (color, index) =>
             html`<div
-              class="w-[30px] h-[30px] rounded-sm shadow-sm ${index ===
+              class="w-[30px] h-[30px] rounded-sm shadow-sm cursor-pointer ${index ===
               paletteIndex
                 ? "border-2 border-white outline outline-2 outline-black"
                 : ""}"
@@ -495,20 +555,22 @@ function patternDesign() {
       <div
         id="artboard-container"
         class="flex flex-1 justify-center overflow-hidden ">
-        <div class="flex relative border-1 border-black">
+        <div class="flex relative self-center">
           <canvas
             id="preview-canvas"
+            class="outline-1 outline-black"
+            style="outline-offset: -1px;"
             @pointerdown=${onArtboardDown}
             @pointermove=${artboardPointerMove}
             @pointerleave=${() => store.dispatch(setMousePos(null))}></canvas>
           ${mousePos &&
           cellSize &&
           html`<div
-              class="bg-[#ffffff50] pointer-events-none z-10 absolute w-full left-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
+              class="bg-[#ffffff30] pointer-events-none z-10 absolute w-full left-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
               style="top: ${mousePos[1] *
               cellSize}px; height: ${cellSize}px"></div>
             <div
-              class="bg-[#ffffff50] pointer-events-none z-10 absolute h-full top-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
+              class="bg-[#ffffff30] pointer-events-none z-10 absolute h-full top-0 shadow-[0_0_3px_0_rgba(0,0,0,0.5)]"
               style="left: ${mousePos[0] *
               cellSize}px; width: ${cellSize}px"></div>`}
         </div>

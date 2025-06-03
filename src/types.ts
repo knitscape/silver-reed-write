@@ -34,6 +34,7 @@ export type PatternConfig = {
   endNeedleSelection: boolean; // knit contrast yarn on the end needles
   marginLeft: number;
   marginRight: number;
+  height: number;
 };
 
 export type MachineState = {
