@@ -14,6 +14,7 @@ export function drawBitmapToCanvas(
   }
 
   const imageData = ctx.createImageData(bitmap.width, bitmap.height);
+
   for (let i = 0; i < bitmap.data.length; i++) {
     const color = bitmap.palette[bitmap.data[i]];
     imageData.data[i * 4] = color[0];
@@ -26,13 +27,9 @@ export function drawBitmapToCanvas(
 
 export function fitCanvasToParent(
   canvas: HTMLCanvasElement,
+  parent: HTMLElement,
   aspectRatio: number
 ) {
-  const parent = document.getElementById("artboard-container");
-  if (!parent) {
-    return;
-  }
-
   const parentWidth = parent.clientWidth;
   const parentHeight = parent.clientHeight;
 
@@ -53,13 +50,26 @@ export function drawPreviewPattern(bitmap: Bitmap) {
     "preview-canvas"
   ) as HTMLCanvasElement;
   const aspectRatio = bitmap.width / bitmap.height;
-  fitCanvasToParent(previewCanvas, aspectRatio);
+  fitCanvasToParent(
+    previewCanvas,
+    document.getElementById("artboard-container")!,
+    aspectRatio
+  );
   drawBitmapToCanvas(previewCanvas, bitmap);
 }
 
 export function drawComputedPattern(computedPattern: Bitmap) {
-  const canvas = document.getElementById("pattern-canvas") as HTMLCanvasElement;
+  const canvas = document.getElementById(
+    "computed-pattern-canvas"
+  ) as HTMLCanvasElement;
+
+  const aspectRatio = computedPattern.width / computedPattern.height;
+  fitCanvasToParent(
+    canvas,
+    document.getElementById("preview-computed-pattern-container")!,
+    (aspectRatio * 4) / 3
+  );
   drawBitmapToCanvas(canvas, computedPattern);
-  canvas.style.width = `${computedPattern.width * 20}px`;
-  canvas.style.height = `${computedPattern.height * 20}px`;
+  // canvas.style.width = `${computedPattern.width * 20}px`;
+  // canvas.style.height = `${computedPattern.height * 20}px`;
 }

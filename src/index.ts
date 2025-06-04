@@ -47,7 +47,63 @@ function patternConfig() {
         class="flex flex-row items-center bg-neutral text-neutral-content p-1">
         <span class="font-bold">Pattern config</span>
       </div>
-      <div class="flex flex-col gap-1 p-1 overflow-y-auto">
+      <div class="flex flex-col gap-1 p-2 overflow-y-auto">
+        <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend p-1">Extents</legend>
+          <label class="input input-xs">
+            <span class="label">Left</span>
+            <input
+              value=${machineState.pointCams[0]}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setMachineState({
+                    ...machineState,
+                    pointCams: [parseInt(value), machineState.pointCams[1]],
+                  })
+                );
+              }}
+              type="number"
+              min="-100"
+              max="100"
+              step="1" />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Right</span>
+            <input
+              value=${machineState.pointCams[1]}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setMachineState({
+                    ...machineState,
+                    pointCams: [machineState.pointCams[0], parseInt(value)],
+                  })
+                );
+              }}
+              type="number"
+              min="-100"
+              max="100"
+              step="1" />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Height</span>
+            <input
+              value=${patternConfig.height}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    height: parseInt(value),
+                  })
+                );
+              }}
+              type="number"
+              min="0"
+              max="1000" />
+          </label>
+        </fieldset>
         <fieldset class="fieldset border-base-300 border-1 p-1">
           <legend class="fieldset-legend">Mirroring</legend>
           <label class="label">
@@ -228,62 +284,6 @@ function patternConfig() {
             Negative
           </label>
         </fieldset>
-        <fieldset class="fieldset border-base-300 border-1 p-1">
-          <legend class="fieldset-legend p-1">Extents</legend>
-          <label class="input input-xs">
-            <span class="label">Left</span>
-            <input
-              value=${machineState.pointCams[0]}
-              @change=${(e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                store.dispatch(
-                  setMachineState({
-                    ...machineState,
-                    pointCams: [parseInt(value), machineState.pointCams[1]],
-                  })
-                );
-              }}
-              type="number"
-              min="-100"
-              max="100"
-              step="1" />
-          </label>
-          <label class="input input-xs">
-            <span class="label">Right</span>
-            <input
-              value=${machineState.pointCams[1]}
-              @change=${(e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                store.dispatch(
-                  setMachineState({
-                    ...machineState,
-                    pointCams: [machineState.pointCams[0], parseInt(value)],
-                  })
-                );
-              }}
-              type="number"
-              min="-100"
-              max="100"
-              step="1" />
-          </label>
-          <label class="input input-xs">
-            <span class="label">Height</span>
-            <input
-              value=${patternConfig.height}
-              @change=${(e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                store.dispatch(
-                  setPatternConfig({
-                    ...patternConfig,
-                    height: parseInt(value),
-                  })
-                );
-              }}
-              type="number"
-              min="0"
-              max="1000" />
-          </label>
-        </fieldset>
       </div>
     </div>
   `;
@@ -405,17 +405,7 @@ function interactiveKnitting() {
   const currentRow = state.knittingState.currentRowNumber;
   const connected = serial.connected();
 
-  return html` <div
-      class="flex gap-2 items-center p-1 shadow-sm ${connected
-        ? "bg-primary text-primary-content"
-        : "bg-neutral text-neutral-content"}">
-      <span class="font-bold">
-        ${connected ? "Connected to machine" : "Not connected to machine"}
-      </span>
-      ${connected ? connectedBtns() : disconnectedBtns()}
-    </div>
-
-    <div class="flex flex-row gap-1">
+  return html` <div class="flex flex-row gap-1">
       <span>Side: ${state.knittingState.carriageSide}</span>
     </div>
     <div class="flex flex-row justify-center m-5 overflow-hidden">
@@ -678,42 +668,69 @@ function patternSetup() {
       <div role="tablist" class="tabs tabs-border tabs-xs flex-1">
         <button
           role="tab"
-          class="tab ${mode === "upload" ? "tab-active" : ""}"
-          @click=${() => store.dispatch(setMode("upload"))}>
-          Upload
-        </button>
-        <button
-          role="tab"
           class="tab ${mode === "design" ? "tab-active" : ""}"
+          style="color: ${mode === "design" ? "white" : "black"}"
           @click=${() => store.dispatch(setMode("design"))}>
           Design
         </button>
         <button
           role="tab"
-          class="tab ${mode === "library" ? "tab-active" : ""}"
+          class="tab text-neutral-content/50 ${mode === "library"
+            ? "tab-active"
+            : ""}"
+          style="color: ${mode === "library" ? "white" : "black"}"
           @click=${() => store.dispatch(setMode("library"))}>
           Library
+        </button>
+        <button
+          role="tab"
+          class="tab text-neutral-content/50 ${mode === "upload"
+            ? "tab-active"
+            : ""}"
+          style="color: ${mode === "upload" ? "white" : "black"}"
+          @click=${() => store.dispatch(setMode("upload"))}>
+          Upload
         </button>
       </div>
     </div>
     <div
       id="base-pattern-content-container"
-      class="flex-1 flex flex-col overflow-hidden">
+      class="flex-1 flex flex-col overflow-hidden p-1">
       ${basePatternMode()}
     </div>
   </div>`;
 }
 
+function previewComputedPattern() {
+  return html` <div id="preview-computed-pattern-container" class="flex flex-1">
+    <div
+      class="flex flex-1 flex-col overflow-hidden p-1 items-center justify-center">
+      <canvas id="computed-pattern-canvas"></canvas>
+    </div>
+  </div>`;
+}
+
 function view() {
+  const connected = serial.connected();
+
   return html`
     <div class="flex flex-col h-screen overflow-hidden">
       <div id="pattern-setup-container" class="flex flex-row bg-base-300">
         ${patternSetup()} ${patternConfig()}
       </div>
       <div
-        id="interactive-knitting-container"
+        id="computed-pattern-container"
         class="flex flex-col overflow-hidden bg-base-300">
-        ${interactiveKnitting()}
+        <div
+          class="flex gap-2 items-center p-1 shadow-sm ${connected
+            ? "bg-primary text-primary-content"
+            : "bg-neutral text-neutral-content"}">
+          <span class="font-bold">
+            ${connected ? "Connected to machine" : "Not connected to machine"}
+          </span>
+          ${connected ? connectedBtns() : disconnectedBtns()}
+        </div>
+        ${connected ? interactiveKnitting() : previewComputedPattern()}
       </div>
     </div>
   `;
@@ -727,13 +744,14 @@ function r() {
 document.addEventListener("DOMContentLoaded", () => {
   r();
 
-  Split(["#pattern-setup-container", "#interactive-knitting-container"], {
+  Split(["#pattern-setup-container", "#computed-pattern-container"], {
     sizes: [50, 50],
     direction: "vertical",
     onDrag: () => {
       const state = store.getState();
       console.log("onDrag");
       drawPreviewPattern(state.basePattern);
+      drawComputedPattern(selectComputedPattern(state));
     },
   });
   const initialState = store.getState();
