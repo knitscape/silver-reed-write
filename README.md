@@ -100,3 +100,8 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
 
 - If you're using VSCode/Cursor, you need to set the language mode to
   `tailwindcss` for the `css` file or else it will complain about the at rules.
+
+## Instructions
+
+- Flash micropython to board:
+  https://wiki.seeedstudio.com/XIAO-RP2040-with-MicroPython/
