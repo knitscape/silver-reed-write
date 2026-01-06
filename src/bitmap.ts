@@ -190,7 +190,6 @@ const SUPPORTED_FORMATS = [
   "image/gif",
   "image/webp",
 ];
-
 export async function createBitmapFromImage(file: File): Promise<Bitmap> {
   if (!SUPPORTED_FORMATS.includes(file.type)) {
     throw new Error(
@@ -217,10 +216,14 @@ export async function createBitmapFromImage(file: File): Promise<Bitmap> {
 
       const imageData = ctx.getImageData(0, 0, img.width, img.height);
       const data = new Uint8Array(img.width * img.height);
-      const palette: Palette = [];
-      const colorMap = new Map<string, number>();
 
-      // Process each pixel and build the palette
+      // Fixed black and white palette
+      const palette: Palette = [
+        [0, 0, 0], // Black
+        [255, 255, 255], // White
+      ];
+
+      // Process each pixel and convert to black or white
       for (let i = 0; i < imageData.data.length; i += 4) {
         const r = imageData.data[i];
         const g = imageData.data[i + 1];
@@ -229,23 +232,16 @@ export async function createBitmapFromImage(file: File): Promise<Bitmap> {
 
         // Skip fully transparent pixels
         if (a === 0) {
-          data[i / 4] = 0;
+          data[i / 4] = 0; // Black for transparent pixels
           continue;
         }
 
-        const colorKey = `${r},${g},${b}`;
+        // Calculate grayscale value using luminance formula
+        const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
 
-        if (!colorMap.has(colorKey)) {
-          colorMap.set(colorKey, palette.length);
-          palette.push([r, g, b]);
-        }
-
-        data[i / 4] = colorMap.get(colorKey)!;
-      }
-
-      // Ensure we have at least one color in the palette
-      if (palette.length === 0) {
-        palette.push([0, 0, 0]);
+        // Threshold at 128 (halfway between 0 and 255)
+        // 0 = black, 1 = white in our palette
+        data[i / 4] = grayscale >= 128 ? 1 : 0;
       }
 
       resolve({

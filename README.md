@@ -10,6 +10,8 @@ controller for the silver reed sk840
   - https://github.com/romkal/silverduino
   - https://github.com/romkal/silverduino-board
 - Documentation/manuals
+  - Service manual:
+    https://mkmanuals.com/downloadable/download/sample/sample_id/307/
   - EC1 parts catalog:
     https://mkmanuals.com/downloadable/download/sample/sample_id/1483/
   - the last two pages of this service manual for the 500 series are helpful
@@ -66,6 +68,11 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
 
 - Core features
   - [ ] notify on disconnect
+  - [ ] set which side the carriage is on
+  - [ ] investigate why first row is not selecting
+  - [ ] take extents from uploaded pattern
+  - [ ] autoscroll with pattern progression
+  - [ ] mirror each row as it is being sent
 - Workspace
   - [ ] save state to browser storage
   - [ ] Make a pattern library
@@ -92,9 +99,9 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
   - [ ] small preview
   - [ ] save preview image
 - Pattern design (black and white)
-  - [ ] pixel art editor
-  - [ ] resize pattern extents
-  - [ ] save pattern
+  - [x] pixel art editor
+  - [x] resize pattern extents
+  - [x] save pattern
 
 ## Dev notes
 
