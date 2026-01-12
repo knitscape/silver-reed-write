@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import reducer from "./slice";
-import { writePatternRow } from "./serial";
+import { writePatternRow, serial } from "./serial";
 import { drawPreviewPattern, drawComputedPattern } from "./drawing";
 import { selectComputedPattern, selectCurrentRow } from "./selectors";
 
@@ -28,7 +28,15 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
       break;
     case "controller/advanceRow":
       if (newState.knittingState.patterning) {
-        await writePatternRow(selectCurrentRow(newState));
+        const rowData = selectCurrentRow(newState);
+        const computedPattern = selectComputedPattern(newState);
+        console.log(
+          `[ADVANCE_ROW] Advancing to row ${newState.knittingState.currentRowNumber}, pattern width=${computedPattern.width}, row data length=${rowData.length}, carriageSide=${newState.knittingState.carriageSide}`
+        );
+        await writePatternRow(rowData);
+        console.log(
+          `[ADVANCE_ROW] Row ${newState.knittingState.currentRowNumber} sent successfully`
+        );
       }
       break;
     case "controller/setMode":

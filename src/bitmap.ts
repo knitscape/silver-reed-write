@@ -9,7 +9,7 @@ export interface Bitmap {
   palette: Palette;
 }
 
-export function getRow(bitmap: Bitmap, row: number, bottomUp: boolean = true) {
+export function getRow(bitmap: Bitmap, row: number) {
   return bitmap.data.slice(row * bitmap.width, (row + 1) * bitmap.width);
 }
 

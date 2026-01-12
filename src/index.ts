@@ -417,6 +417,7 @@ function interactiveKnitting() {
 
     <div class="flex flex-row gap-1">
       <span>Side: ${state.knittingState.carriageSide}</span>
+      <span>Current Row: ${state.knittingState.currentRowNumber}</span>
     </div>
     <div class="flex flex-row justify-center m-5 overflow-hidden">
       <div
