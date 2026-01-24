@@ -108,7 +108,43 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
 - If you're using VSCode/Cursor, you need to set the language mode to
   `tailwindcss` for the `css` file or else it will complain about the at rules.
 
-## Instructions
 
-- Flash micropython to board:
+
+
+
+## micropython workflow
+
+
+- Flash micropython to xiao:
   https://wiki.seeedstudio.com/XIAO-RP2040-with-MicroPython/
+
+Interact with micropython devices using `mpremote`:
+https://docs.micropython.org/en/latest/reference/mpremote.html
+
+List devices: `mpremote connect list` or shorthand `mpremote devs`
+
+Connect to `ttyACM` port: `mpremote connect /dev/ttyACMn` or `mpremote a0`
+(`a1`, `a2`, `a3`, etc). This implicitly runs the `repl` command.
+
+List files: `mpremote a0 ls`
+
+Edit a file with your `$EDITOR`: `mpremote edit file.py`
+
+Run a local file on the device: `mpremote a0 run blink.py`
+
+Copy `main.py` from the local directory to the device: `mpremote cp main.py :`
+
+Update the contents of a file and restart your program with a soft reset, and
+monitor the output via the repl: `mpremote cp main.py : + soft-reset repl`
+
+Recursively copy the local directory dir to the remote device.
+`mpremote cp -r dir/ :`
+
+#### Workflow
+
+1. Make a directory that has the file structure layout you want on your board.
+2. Switch to it `cd directoryName`
+3. Make some changes
+4. run `mpremote cp -r . :` to copy your entire current working directory onto
+   the device
+5. Press reboot (R button)
