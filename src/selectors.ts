@@ -14,7 +14,7 @@ export const selectComputedPattern = createSelector(
   [selectBasePattern, selectPatternConfig, selectMachineState],
   (basePattern, patternConfig, machineState) => {
     return computePattern(basePattern, patternConfig, machineState);
-  }
+  },
 );
 
 // Derived selector for current row
@@ -22,9 +22,6 @@ export const selectCurrentRow = createSelector(
   [selectComputedPattern, selectKnittingState],
   (computedPattern, knittingState) => {
     if (!computedPattern) return [];
-
-    console.log("CURRENT_ROW", knittingState.currentRowNumber);
-    console.log("CARRIAGE_SIDE", knittingState.carriageSide);
 
     // Invert row number: currentRowNumber goes 0->1->2... but we need to send rows in opposite order
     // Convert: actualRow = height - 1 - currentRowNumber
@@ -52,5 +49,5 @@ export const selectCurrentRow = createSelector(
     }
 
     return result;
-  }
+  },
 );

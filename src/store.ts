@@ -29,14 +29,7 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
     case "controller/advanceRow":
       if (newState.knittingState.patterning) {
         const rowData = selectCurrentRow(newState);
-        const computedPattern = selectComputedPattern(newState);
-        console.log(
-          `[ADVANCE_ROW] Advancing to row ${newState.knittingState.currentRowNumber}, pattern width=${computedPattern.width}, row data length=${rowData.length}, carriageSide=${newState.knittingState.carriageSide}`
-        );
         await writePatternRow(rowData);
-        console.log(
-          `[ADVANCE_ROW] Row ${newState.knittingState.currentRowNumber} sent successfully`
-        );
       }
       break;
     case "controller/setMode":

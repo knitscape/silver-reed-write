@@ -60,7 +60,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     mirror_horizontal: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Horizontally
@@ -75,7 +75,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     mirror_vertical: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Vertically
@@ -93,7 +93,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     double_rows: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Rows
@@ -108,7 +108,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     double_cols: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Columns
@@ -126,7 +126,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     repeat_horizontal: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Horizontally
@@ -141,7 +141,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     repeat_vertical: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Vertically
@@ -160,7 +160,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     marginLeft: parseInt((e.target as HTMLInputElement).value),
-                  })
+                  }),
                 );
               }} />
           </label>
@@ -175,7 +175,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     marginRight: parseInt((e.target as HTMLInputElement).value),
-                  })
+                  }),
                 );
               }} />
           </label>
@@ -192,7 +192,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     centerX: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Center X
@@ -207,7 +207,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     endNeedleSelection: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             End needle selection
@@ -222,7 +222,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     negative: (e.target as HTMLInputElement).checked,
-                  })
+                  }),
                 );
               }} />
             Negative
@@ -240,7 +240,7 @@ function patternConfig() {
                   setMachineState({
                     ...machineState,
                     pointCams: [parseInt(value), machineState.pointCams[1]],
-                  })
+                  }),
                 );
               }}
               type="number"
@@ -258,7 +258,7 @@ function patternConfig() {
                   setMachineState({
                     ...machineState,
                     pointCams: [machineState.pointCams[0], parseInt(value)],
-                  })
+                  }),
                 );
               }}
               type="number"
@@ -276,7 +276,7 @@ function patternConfig() {
                   setPatternConfig({
                     ...patternConfig,
                     height: parseInt(value),
-                  })
+                  }),
                 );
               }}
               type="number"
@@ -332,10 +332,10 @@ function getRow(e: PointerEvent, height: number) {
 
 function gutters(height: number) {
   return new Array(height).fill(0).map(
-    (_, row) => html`<div
-      class="flex items-center justify-center  h-[20px] leading-0">
-      <span class="text-xs font-mono self-end">${row + 1}</span>
-    </div>`
+    (_, row) =>
+      html`<div class="flex items-center justify-center  h-[20px] leading-0">
+        <span class="text-xs font-mono self-end">${row + 1}</span>
+      </div>`,
   );
 }
 
@@ -344,11 +344,12 @@ function needles(pointCams: [number, number]) {
   return new Array(width)
     .fill(0)
     .map(
-      (_, col) => html` <span class="w-[20px]" style="font-size: 9px;"
-        >${col + pointCams[0] >= 0
-          ? col + pointCams[0] + 1
-          : col + pointCams[0]}</span
-      >`
+      (_, col) =>
+        html` <span class="w-[20px]" style="font-size: 9px;"
+          >${col + pointCams[0] >= 0
+            ? col + pointCams[0] + 1
+            : col + pointCams[0]}</span
+        >`,
     );
 }
 
@@ -370,7 +371,7 @@ function connectedBtns() {
               setKnittingState({
                 ...state.knittingState,
                 patterning: false,
-              })
+              }),
             )}
           class="btn btn-xs btn-info">
           Stop Knitting!
@@ -381,7 +382,7 @@ function connectedBtns() {
               setKnittingState({
                 ...state.knittingState,
                 patterning: true,
-              })
+              }),
             )}
           class="btn btn-xs btn-info">
           Begin Interactive Knitting!
@@ -431,7 +432,7 @@ function interactiveKnitting() {
               setKnittingState({
                 ...state.knittingState,
                 currentRowNumber: row,
-              })
+              }),
             );
           }}>
           <div
@@ -483,7 +484,7 @@ function dragTool(startCell: [number, number]) {
   let onEnterCell = tool(
     state.basePattern,
     lastCell,
-    state.designState.selectedPaletteIndex
+    state.designState.selectedPaletteIndex,
   );
 
   const changes = onEnterCell(lastCell);
@@ -540,7 +541,7 @@ function patternDesign() {
               resizeBitmap({
                 width: parseInt(value),
                 height: state.basePattern.height,
-              })
+              }),
             );
           }}
           type="number"
@@ -558,7 +559,7 @@ function patternDesign() {
               resizeBitmap({
                 width: state.basePattern.width,
                 height: parseInt(value),
-              })
+              }),
             );
           }}
           type="number"
@@ -578,9 +579,9 @@ function patternDesign() {
                 [
                   [0, 0, 0],
                   [255, 255, 255],
-                ]
-              )
-            )
+                ],
+              ),
+            ),
           );
         }}>
         Clear
@@ -608,7 +609,7 @@ function patternDesign() {
                 store.dispatch(setTool(toolName));
               }}
               name="tool"
-              value=${toolName} />`
+              value=${toolName} />`,
         )}
       </div>
     </div>
@@ -623,7 +624,7 @@ function patternDesign() {
                 ? "border-2 border-white outline outline-2 outline-black"
                 : ""}"
               style="background-color: rgb(${color[0]}, ${color[1]}, ${color[2]})"
-              @click=${() => store.dispatch(setPaletteIndex(index))}></div>`
+              @click=${() => store.dispatch(setPaletteIndex(index))}></div>`,
         )}
       </div>
       <div
@@ -733,7 +734,6 @@ document.addEventListener("DOMContentLoaded", () => {
     direction: "vertical",
     onDrag: () => {
       const state = store.getState();
-      console.log("onDrag");
       drawPreviewPattern(state.basePattern);
     },
   });

@@ -87,9 +87,6 @@ const slice = createSlice({
       ) {
         state.knittingState.currentRowNumber = 0;
       }
-      console.log(
-        `advanceRow reducer: ${oldRow} -> ${state.knittingState.currentRowNumber}`
-      );
     },
     setMode: (state, action) => {
       state.mode = action.payload;

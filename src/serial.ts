@@ -11,6 +11,7 @@ let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 let reading = false;
 let readBuffer = new Uint8Array(0);
+let textBuffer = ""; // Buffer for accumulating text from Serial.println()
 let writeInProgress = false;
 let processingRowComplete = false;
 
@@ -43,26 +44,32 @@ async function startReading() {
       }
 
       if (value) {
-        // Append to buffer
-        const newBuffer = new Uint8Array(readBuffer.length + value.length);
-        newBuffer.set(readBuffer);
-        newBuffer.set(value, readBuffer.length);
-        readBuffer = newBuffer;
+        // Process each byte
+        for (let i = 0; i < value.length; i++) {
+          const byte = value[i];
 
-        // Process complete messages
-        while (readBuffer.length >= 1) {
-          const msgType = readBuffer[0];
-
-          if (msgType === MSG_ROW_COMPLETE) {
+          // Check if it's a protocol message
+          if (byte === MSG_ROW_COMPLETE) {
             // Row complete message (1 byte)
             if (!processingRowComplete) {
               handleRowComplete();
             }
-            // Silently skip duplicate row complete messages (they can happen due to timing)
-            readBuffer = readBuffer.slice(1);
+          } else if (byte === CMD_SET_ROW) {
+            // Shouldn't receive this from device, but handle gracefully
+            console.warn("Received CMD_SET_ROW from device (unexpected)");
           } else {
-            // Unknown message type or incomplete message, skip one byte
-            readBuffer = readBuffer.slice(1);
+            // Treat as text character
+            if (byte === 0x0a || byte === 0x0d) {
+              // Newline or carriage return - log accumulated text
+              if (textBuffer.length > 0) {
+                console.log(`[ARDUINO] ${textBuffer}`);
+                textBuffer = "";
+              }
+            } else if (byte >= 0x20 && byte <= 0x7e) {
+              // Printable ASCII character
+              textBuffer += String.fromCharCode(byte);
+            }
+            // Ignore other control characters
           }
         }
       }
@@ -89,15 +96,12 @@ async function handleRowComplete() {
       const currentSide = appState.knittingState.carriageSide;
       // Toggle carriage side: left -> right, right -> left
       const newSide = currentSide === "left" ? "right" : "left";
-      console.log(
-        `[ROW_COMPLETE] Row ${currentRowNum} complete, toggling carriage side from ${currentSide} to ${newSide}`
-      );
       // Update carriage side first, then advance row
       store.dispatch(
         setKnittingState({
           ...appState.knittingState,
           carriageSide: newSide,
-        })
+        }),
       );
       store.dispatch(advanceRow());
       // Wait a bit to ensure the row send completes before processing next message
@@ -147,6 +151,7 @@ function handleDisconnect() {
   writer = null;
   port = null;
   readBuffer = new Uint8Array(0);
+  textBuffer = "";
   writeInProgress = false;
   processingRowComplete = false;
 }
