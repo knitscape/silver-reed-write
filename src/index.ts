@@ -511,6 +511,20 @@ function interactiveKnitting() {
             );
           }} />
       </label>
+      <button
+        class="btn btn-xs btn-ghost"
+        @click=${() => {
+          if (confirm("Reset total row count to zero?")) {
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                totalRows: 0,
+              }),
+            );
+          }
+        }}>
+        Reset
+      </button>
     </div>
     <div class="flex flex-row justify-center m-5 overflow-hidden">
       <div
