@@ -16,7 +16,7 @@ export const initialState = {
     negative: false,
     mirror_vertical: false,
     mirror_horizontal: false,
-    centerX: true,
+    alignment: "center",
     repeat_horizontal: true,
     repeat_vertical: true,
     endNeedleSelection: false,

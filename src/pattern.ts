@@ -44,7 +44,7 @@ export function computePattern(
     base,
     patternConfig.repeat_horizontal,
     patternConfig.repeat_vertical,
-    patternConfig.centerX
+    patternConfig.alignment
   );
 
   if (patternConfig.endNeedleSelection) {
@@ -73,15 +73,18 @@ function tileBitmap(
   baseBitmap: Bitmap,
   repeatHorizontal: boolean = true,
   repeatVertical: boolean = true,
-  center: boolean = false
+  alignment: "left" | "center" | "right" = "left"
 ) {
   // First update the palette by copying colors from base bitmap
   bitmap.palette = [...baseBitmap.palette];
 
-  // Calculate offset for centering
-  const xOffset = center
-    ? Math.floor((bitmap.width - baseBitmap.width) / 2)
-    : 0;
+  // Calculate offset based on alignment
+  let xOffset = 0;
+  if (alignment === "center") {
+    xOffset = Math.floor((bitmap.width - baseBitmap.width) / 2);
+  } else if (alignment === "right") {
+    xOffset = bitmap.width - baseBitmap.width;
+  }
 
   for (let y = bitmap.height - 1; y >= 0; y--) {
     for (let x = 0; x < bitmap.width; x++) {

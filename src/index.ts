@@ -49,6 +49,78 @@ function patternConfig() {
       </div>
       <div class="flex flex-col gap-1 p-1 overflow-y-auto">
         <fieldset class="fieldset border-base-300 border-1 p-1">
+          <legend class="fieldset-legend">Extents</legend>
+          <label class="input input-xs">
+            <span class="label">Left</span>
+            <input
+              value=${machineState.pointCams[0]}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setMachineState({
+                    ...machineState,
+                    pointCams: [parseInt(value), machineState.pointCams[1]],
+                  }),
+                );
+              }}
+              type="number"
+              min="-100"
+              max="100"
+              step="1" />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Right</span>
+            <input
+              value=${machineState.pointCams[1]}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setMachineState({
+                    ...machineState,
+                    pointCams: [machineState.pointCams[0], parseInt(value)],
+                  }),
+                );
+              }}
+              type="number"
+              min="-100"
+              max="100"
+              step="1" />
+          </label>
+          <label class="input input-xs">
+            <span class="label">Height</span>
+            <input
+              value=${patternConfig.height}
+              ?disabled=${patternConfig.heightFromTile}
+              @change=${(e: Event) => {
+                const value = (e.target as HTMLInputElement).value;
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    height: parseInt(value),
+                  }),
+                );
+              }}
+              type="number"
+              min="0"
+              max="1000" />
+          </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.heightFromTile}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    heightFromTile: (e.target as HTMLInputElement).checked,
+                  }),
+                );
+              }} />
+            From base tile
+          </label>
+        </fieldset>
+        <fieldset class="fieldset border-base-300 border-1 p-1">
           <legend class="fieldset-legend">Mirroring</legend>
           <label class="label">
             <input
@@ -182,21 +254,50 @@ function patternConfig() {
         </fieldset>
         <fieldset class="fieldset border-base-300 border-1 p-1">
           <legend class="fieldset-legend">Misc</legend>
-          <label class="label">
-            <input
-              type="checkbox"
-              class="toggle toggle-xs"
-              ?checked=${patternConfig.centerX}
-              @change=${(e: Event) => {
-                store.dispatch(
-                  setPatternConfig({
-                    ...patternConfig,
-                    centerX: (e.target as HTMLInputElement).checked,
-                  }),
-                );
-              }} />
-            Center X
-          </label>
+          <div class="flex flex-row gap-1 items-center">
+            <span class="text-xs">Alignment</span>
+            <div class="join">
+              <input
+                type="radio"
+                name="alignment"
+                class="join-item btn btn-xs"
+                aria-label="Left"
+                .checked=${patternConfig.alignment === "left"}
+                @click=${() =>
+                  store.dispatch(
+                    setPatternConfig({
+                      ...patternConfig,
+                      alignment: "left",
+                    }),
+                  )} />
+              <input
+                type="radio"
+                name="alignment"
+                class="join-item btn btn-xs"
+                aria-label="Center"
+                .checked=${patternConfig.alignment === "center"}
+                @click=${() =>
+                  store.dispatch(
+                    setPatternConfig({
+                      ...patternConfig,
+                      alignment: "center",
+                    }),
+                  )} />
+              <input
+                type="radio"
+                name="alignment"
+                class="join-item btn btn-xs"
+                aria-label="Right"
+                .checked=${patternConfig.alignment === "right"}
+                @click=${() =>
+                  store.dispatch(
+                    setPatternConfig({
+                      ...patternConfig,
+                      alignment: "right",
+                    }),
+                  )} />
+            </div>
+          </div>
           <label class="label">
             <input
               type="checkbox"
@@ -226,78 +327,6 @@ function patternConfig() {
                 );
               }} />
             Negative
-          </label>
-        </fieldset>
-        <fieldset class="fieldset border-base-300 border-1 p-1">
-          <legend class="fieldset-legend p-1">Extents</legend>
-          <label class="input input-xs">
-            <span class="label">Left</span>
-            <input
-              value=${machineState.pointCams[0]}
-              @change=${(e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                store.dispatch(
-                  setMachineState({
-                    ...machineState,
-                    pointCams: [parseInt(value), machineState.pointCams[1]],
-                  }),
-                );
-              }}
-              type="number"
-              min="-100"
-              max="100"
-              step="1" />
-          </label>
-          <label class="input input-xs">
-            <span class="label">Right</span>
-            <input
-              value=${machineState.pointCams[1]}
-              @change=${(e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                store.dispatch(
-                  setMachineState({
-                    ...machineState,
-                    pointCams: [machineState.pointCams[0], parseInt(value)],
-                  }),
-                );
-              }}
-              type="number"
-              min="-100"
-              max="100"
-              step="1" />
-          </label>
-          <label class="input input-xs">
-            <span class="label">Height</span>
-            <input
-              value=${patternConfig.height}
-              ?disabled=${patternConfig.heightFromTile}
-              @change=${(e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                store.dispatch(
-                  setPatternConfig({
-                    ...patternConfig,
-                    height: parseInt(value),
-                  }),
-                );
-              }}
-              type="number"
-              min="0"
-              max="1000" />
-          </label>
-          <label class="label">
-            <input
-              type="checkbox"
-              class="toggle toggle-xs"
-              ?checked=${patternConfig.heightFromTile}
-              @change=${(e: Event) => {
-                store.dispatch(
-                  setPatternConfig({
-                    ...patternConfig,
-                    heightFromTile: (e.target as HTMLInputElement).checked,
-                  }),
-                );
-              }} />
-            From base tile
           </label>
         </fieldset>
       </div>

@@ -30,7 +30,7 @@ export type PatternConfig = {
   mirror_horizontal: boolean;
   repeat_horizontal: boolean;
   repeat_vertical: boolean;
-  centerX: boolean;
+  alignment: "left" | "center" | "right";
   endNeedleSelection: boolean; // knit contrast yarn on the end needles
   marginLeft: number;
   marginRight: number;
