@@ -11,29 +11,364 @@ import {
   setPaletteIndex,
   setPatternConfig,
   setTool,
+  setFairisleMode,
+  setFairisleRowColor,
+  syncFairisleColors,
+  setShowFairisleColors,
 } from "./slice";
 import {
   createBitmapFromImage,
   createEmptyBitmap,
   bitmapEditingTools,
   bitmapToPNGDataURL,
+  RGBColor,
 } from "./bitmap";
 import { isLeftClick, getCellFromEvent, getCurrentCellSize } from "./utils";
 import { store } from "./store";
 import { drawComputedPattern, drawPreviewPattern } from "./drawing";
 import { selectComputedPattern } from "./selectors";
 import Split from "split.js";
+import { getYarnLibrary, addYarn, updateYarn, removeYarn } from "./yarnLibrary";
+
+// Helper functions for color conversion
+function rgbToHex(rgb: [number, number, number]): string {
+  return (
+    "#" +
+    rgb
+      .map((c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+      })
+      .join("")
+  );
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return [0, 0, 0];
+  return [
+    parseInt(result[1], 16),
+    parseInt(result[2], 16),
+    parseInt(result[3], 16),
+  ];
+}
+
+// Add Yarn Modal state
+let addYarnModalOpen = false;
+let addYarnModalCallback: ((color: RGBColor) => void) | null = null;
+let addYarnModalName = "";
+let addYarnModalColor = "#ffffff";
+
+function openAddYarnModal(callback: (color: RGBColor) => void) {
+  addYarnModalOpen = true;
+  addYarnModalCallback = callback;
+  addYarnModalName = "";
+  addYarnModalColor = "#ffffff";
+}
+
+function closeAddYarnModal() {
+  addYarnModalOpen = false;
+  addYarnModalCallback = null;
+}
+
+function submitAddYarnModal() {
+  if (addYarnModalName.trim() && addYarnModalCallback) {
+    const color = hexToRgb(addYarnModalColor);
+    const newYarn = addYarn(addYarnModalName.trim(), color);
+    addYarnModalCallback(newYarn.color);
+    closeAddYarnModal();
+  }
+}
+
+function addYarnModal() {
+  if (!addYarnModalOpen) return null;
+
+  return html`
+    <div
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      @click=${(e: Event) => {
+        if (e.target === e.currentTarget) closeAddYarnModal();
+      }}>
+      <div class="bg-base-100 rounded-lg shadow-xl p-4 w-80">
+        <h3 class="font-bold text-lg mb-4">Add New Yarn</h3>
+        <div class="flex flex-col gap-3">
+          <label class="form-control">
+            <span class="label-text mb-1">Yarn Name</span>
+            <input
+              type="text"
+              class="input input-bordered input-sm"
+              placeholder="e.g. Ocean Blue"
+              .value=${addYarnModalName}
+              @input=${(e: Event) => {
+                addYarnModalName = (e.target as HTMLInputElement).value;
+              }}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === "Enter") submitAddYarnModal();
+                if (e.key === "Escape") closeAddYarnModal();
+              }} />
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Color</span>
+            <div class="flex gap-2 items-center">
+              <input
+                type="color"
+                class="w-12 h-10 cursor-pointer border-0 p-0 rounded"
+                .value=${addYarnModalColor}
+                @input=${(e: Event) => {
+                  addYarnModalColor = (e.target as HTMLInputElement).value;
+                }} />
+              <input
+                type="text"
+                class="input input-bordered input-sm flex-1"
+                placeholder="#ffffff"
+                .value=${addYarnModalColor}
+                @input=${(e: Event) => {
+                  addYarnModalColor = (e.target as HTMLInputElement).value;
+                }} />
+            </div>
+          </label>
+          <div
+            class="w-full h-8 rounded border"
+            style="background-color: ${addYarnModalColor}"></div>
+        </div>
+        <div class="flex gap-2 mt-4 justify-end">
+          <button class="btn btn-sm btn-ghost" @click=${closeAddYarnModal}>
+            Cancel
+          </button>
+          <button
+            class="btn btn-sm btn-primary"
+            ?disabled=${!addYarnModalName.trim()}
+            @click=${submitAddYarnModal}>
+            Add Yarn
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Edit Yarn Modal state
+let editYarnModalOpen = false;
+let editYarnModalId = "";
+let editYarnModalName = "";
+let editYarnModalColor = "#ffffff";
+
+function openEditYarnModal(id: string, name: string, color: RGBColor) {
+  editYarnModalOpen = true;
+  editYarnModalId = id;
+  editYarnModalName = name;
+  editYarnModalColor = rgbToHex(color);
+}
+
+function closeEditYarnModal() {
+  editYarnModalOpen = false;
+  editYarnModalId = "";
+}
+
+function submitEditYarnModal() {
+  if (editYarnModalName.trim() && editYarnModalId) {
+    const color = hexToRgb(editYarnModalColor);
+    updateYarn(editYarnModalId, editYarnModalName.trim(), color);
+    closeEditYarnModal();
+  }
+}
+
+function deleteYarnFromModal() {
+  if (editYarnModalId && confirm("Delete this yarn?")) {
+    removeYarn(editYarnModalId);
+    closeEditYarnModal();
+  }
+}
+
+function editYarnModal() {
+  if (!editYarnModalOpen) return null;
+
+  return html`
+    <div
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      @click=${(e: Event) => {
+        if (e.target === e.currentTarget) closeEditYarnModal();
+      }}>
+      <div class="bg-base-100 rounded-lg shadow-xl p-4 w-80">
+        <h3 class="font-bold text-lg mb-4">Edit Yarn</h3>
+        <div class="flex flex-col gap-3">
+          <label class="form-control">
+            <span class="label-text mb-1">Yarn Name</span>
+            <input
+              type="text"
+              class="input input-bordered input-sm"
+              placeholder="e.g. Ocean Blue"
+              .value=${editYarnModalName}
+              @input=${(e: Event) => {
+                editYarnModalName = (e.target as HTMLInputElement).value;
+              }}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === "Enter") submitEditYarnModal();
+                if (e.key === "Escape") closeEditYarnModal();
+              }} />
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Color</span>
+            <div class="flex gap-2 items-center">
+              <input
+                type="color"
+                class="w-12 h-10 cursor-pointer border-0 p-0 rounded"
+                .value=${editYarnModalColor}
+                @input=${(e: Event) => {
+                  editYarnModalColor = (e.target as HTMLInputElement).value;
+                }} />
+              <input
+                type="text"
+                class="input input-bordered input-sm flex-1"
+                placeholder="#ffffff"
+                .value=${editYarnModalColor}
+                @input=${(e: Event) => {
+                  editYarnModalColor = (e.target as HTMLInputElement).value;
+                }} />
+            </div>
+          </label>
+          <div
+            class="w-full h-8 rounded border"
+            style="background-color: ${editYarnModalColor}"></div>
+        </div>
+        <div class="flex gap-2 mt-4 justify-between">
+          <button
+            class="btn btn-sm btn-error btn-outline"
+            @click=${deleteYarnFromModal}>
+            Delete
+          </button>
+          <div class="flex gap-2">
+            <button class="btn btn-sm btn-ghost" @click=${closeEditYarnModal}>
+              Cancel
+            </button>
+            <button
+              class="btn btn-sm btn-primary"
+              ?disabled=${!editYarnModalName.trim()}
+              @click=${submitEditYarnModal}>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Fairisle yarn painting state
+let selectedFairisleYarnIndex: number | null = null;
+let fairislePainting = false;
+
+function getFairisleYarnPalette() {
+  const yarns = getYarnLibrary();
+
+  return html`
+    <div
+      class="flex flex-col gap-1 bg-base-100 shadow-sm self-center p-1 rounded-md">
+      ${yarns.map(
+        (yarn, index) => html`
+          <div
+            class="group relative w-[30px] h-[30px] rounded-sm shadow-sm cursor-pointer ${index ===
+            selectedFairisleYarnIndex
+              ? "border-2 border-white outline outline-2 outline-black"
+              : ""}"
+            style="background-color: rgb(${yarn.color[0]}, ${yarn
+              .color[1]}, ${yarn.color[2]})"
+            @click=${() => {
+              selectedFairisleYarnIndex = index;
+            }}
+            title=${yarn.name}>
+            <button
+              class="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-base-100 text-base-content text-[10px] rounded-full shadow opacity-0 group-hover:opacity-100"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                openEditYarnModal(yarn.id, yarn.name, yarn.color);
+              }}
+              title="Edit ${yarn.name}">
+              ✎
+            </button>
+          </div>
+        `,
+      )}
+      <button
+        class="btn btn-xs btn-ghost w-[30px] h-[30px] p-0"
+        @click=${() => openAddYarnModal(() => {})}
+        title="Add new yarn">
+        +
+      </button>
+    </div>
+  `;
+}
+
+function paintFairisleCell(rowIndex: number, yarn: "yarn1" | "yarn2") {
+  if (selectedFairisleYarnIndex === null) return;
+  const yarns = getYarnLibrary();
+  if (selectedFairisleYarnIndex >= yarns.length) return;
+  const selectedYarn = yarns[selectedFairisleYarnIndex];
+  store.dispatch(
+    setFairisleRowColor({
+      row: rowIndex,
+      yarn,
+      color: selectedYarn.color,
+    }),
+  );
+}
+
+function getFairisleColorGrid(
+  fairisleColors: { yarn1: RGBColor; yarn2: RGBColor }[],
+  cellSize: number,
+) {
+  return html`
+    <div
+      class="flex flex-col gap-0 self-center overflow-y-auto border border-black"
+      @pointerleave=${() => {
+        fairislePainting = false;
+      }}>
+      ${fairisleColors.map(
+        (colors, rowIndex) => html`
+          <div class="flex flex-row gap-0">
+            <div
+              class="cursor-pointer hover:opacity-80"
+              style="width: ${cellSize}px; height: ${cellSize}px; background-color: rgb(${colors
+                .yarn1[0]}, ${colors.yarn1[1]}, ${colors.yarn1[2]})"
+              @pointerdown=${(e: PointerEvent) => {
+                e.preventDefault();
+                fairislePainting = true;
+                paintFairisleCell(rowIndex, "yarn1");
+              }}
+              @pointerenter=${() => {
+                if (fairislePainting) paintFairisleCell(rowIndex, "yarn1");
+              }}
+              title="Row ${rowIndex + 1} - Yarn 1"></div>
+            <div
+              class="cursor-pointer hover:opacity-80"
+              style="width: ${cellSize}px; height: ${cellSize}px; background-color: rgb(${colors
+                .yarn2[0]}, ${colors.yarn2[1]}, ${colors.yarn2[2]})"
+              @pointerdown=${(e: PointerEvent) => {
+                e.preventDefault();
+                fairislePainting = true;
+                paintFairisleCell(rowIndex, "yarn2");
+              }}
+              @pointerenter=${() => {
+                if (fairislePainting) paintFairisleCell(rowIndex, "yarn2");
+              }}
+              title="Row ${rowIndex + 1} - Yarn 2"></div>
+          </div>
+        `,
+      )}
+    </div>
+  `;
+}
 
 let row = 0;
 let onToolMove: null | Function = null;
 
-// Add a pointer up handler to reset the onToolMove
+// Add a pointer up handler to reset the onToolMove and fairisle painting
 function onPointerUp() {
   onToolMove = null;
+  fairislePainting = false;
 }
 
 // Register the pointer up event globally
-window.addEventListener("pointerup", onPointerUp);
 window.addEventListener("pointerup", onPointerUp);
 
 function patternConfig() {
@@ -702,6 +1037,32 @@ function patternDesign() {
         }}>
         Download
       </button>
+      <label class="label text-xs gap-1">
+        <input
+          type="checkbox"
+          class="checkbox checkbox-xs"
+          .checked=${state.designState.fairisleMode}
+          @change=${(e: Event) => {
+            store.dispatch(
+              setFairisleMode((e.target as HTMLInputElement).checked),
+            );
+          }} />
+        Fairisle?
+      </label>
+      ${state.designState.fairisleMode
+        ? html`<label class="label text-xs gap-1">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-xs"
+              .checked=${state.designState.showFairisleColors}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setShowFairisleColors((e.target as HTMLInputElement).checked),
+                );
+              }} />
+            Show colors
+          </label>`
+        : null}
       <div class="flex flex-1"></div>
       <div class="tabs tabs-xs tabs-box">
         ${Object.keys(bitmapEditingTools).map(
@@ -756,6 +1117,13 @@ function patternDesign() {
               cellSize}px; width: ${cellSize}px"></div>`}
         </div>
       </div>
+      ${state.designState.fairisleMode && cellSize
+        ? html`${getFairisleColorGrid(
+            state.designState.fairisleColors,
+            cellSize,
+          )}
+          ${getFairisleYarnPalette()}`
+        : null}
     </div>
   `;
 }
@@ -824,12 +1192,25 @@ function view() {
         ${interactiveKnitting()}
       </div>
     </div>
+    ${addYarnModal()} ${editYarnModal()}
   `;
 }
 
 function r() {
   render(view(), document.body);
   window.requestAnimationFrame(r);
+}
+
+// Helper to get fairisle colors if fairisle mode is enabled and colors should be shown
+function getFairisleColorsForDrawing(state: ReturnType<typeof store.getState>) {
+  if (
+    state.designState.fairisleMode &&
+    state.designState.showFairisleColors &&
+    state.designState.fairisleColors.length > 0
+  ) {
+    return state.designState.fairisleColors;
+  }
+  return null;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -840,10 +1221,17 @@ document.addEventListener("DOMContentLoaded", () => {
     direction: "vertical",
     onDrag: () => {
       const state = store.getState();
-      drawPreviewPattern(state.basePattern);
+      const fairisleColors = getFairisleColorsForDrawing(state);
+      drawPreviewPattern(state.basePattern, fairisleColors);
     },
   });
   const initialState = store.getState();
-  drawPreviewPattern(initialState.basePattern);
-  drawComputedPattern(selectComputedPattern(initialState));
+  const fairisleColors = getFairisleColorsForDrawing(initialState);
+  drawPreviewPattern(initialState.basePattern, fairisleColors);
+  drawComputedPattern(
+    selectComputedPattern(initialState),
+    fairisleColors,
+    initialState.patternConfig,
+    initialState.basePattern.height,
+  );
 });

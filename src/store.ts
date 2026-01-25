@@ -44,6 +44,30 @@ const preloadedState = cachedState
   ? { ...initialState, ...cachedState }
   : undefined;
 
+// Helper to get fairisle colors if fairisle mode is enabled and colors should be shown
+function getFairisleColors(state: GlobalState) {
+  if (
+    state.designState.fairisleMode &&
+    state.designState.showFairisleColors &&
+    state.designState.fairisleColors.length > 0
+  ) {
+    return state.designState.fairisleColors;
+  }
+  return null;
+}
+
+// Helper to redraw both canvases with current state
+function redrawPatterns(state: GlobalState) {
+  const fairisleColors = getFairisleColors(state);
+  drawPreviewPattern(state.basePattern, fairisleColors);
+  drawComputedPattern(
+    selectComputedPattern(state),
+    fairisleColors,
+    state.patternConfig,
+    state.basePattern.height
+  );
+}
+
 const afterReducerMiddleware = (store) => (next) => async (action) => {
   // Run the reducer
   const result = next(action);
@@ -54,17 +78,16 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
   // After the reducer runs, do things based on the action type
   switch (action.type) {
     case "controller/setBasePattern":
-      drawPreviewPattern(newState.basePattern);
-      drawComputedPattern(selectComputedPattern(newState));
+      redrawPatterns(newState);
       break;
     case "controller/setPatternConfig":
-      drawComputedPattern(selectComputedPattern(newState));
+      redrawPatterns(newState);
       break;
     case "controller/setMachineState":
-      drawComputedPattern(selectComputedPattern(newState));
+      redrawPatterns(newState);
       break;
     case "controller/setKnittingState":
-      drawComputedPattern(selectComputedPattern(newState));
+      redrawPatterns(newState);
       break;
     case "controller/advanceRow":
       if (newState.knittingState.patterning) {
@@ -74,19 +97,26 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
       break;
     case "controller/setMode":
       setTimeout(() => {
-        drawPreviewPattern(newState.basePattern);
+        redrawPatterns(newState);
       }, 0);
-      drawComputedPattern(selectComputedPattern(newState));
       break;
-
     case "controller/drawChanges":
-      drawPreviewPattern(newState.basePattern);
-      drawComputedPattern(selectComputedPattern(newState));
-
+      redrawPatterns(newState);
       break;
     case "controller/resizeBitmap":
-      drawPreviewPattern(newState.basePattern);
-      drawComputedPattern(selectComputedPattern(newState));
+      redrawPatterns(newState);
+      break;
+    case "controller/setFairisleMode":
+      redrawPatterns(newState);
+      break;
+    case "controller/setFairisleRowColor":
+      redrawPatterns(newState);
+      break;
+    case "controller/syncFairisleColors":
+      redrawPatterns(newState);
+      break;
+    case "controller/setShowFairisleColors":
+      redrawPatterns(newState);
       break;
   }
 

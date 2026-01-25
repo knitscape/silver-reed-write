@@ -6,6 +6,7 @@ import {
   KnittingState,
   DesignState,
   FairisleConfig,
+  FairisleRowColors,
 } from "./types";
 import { selectComputedPattern } from "./selectors";
 
@@ -56,6 +57,9 @@ export const initialState = {
     selectedPaletteIndex: 0,
     selectedTool: "brush",
     mousePos: null,
+    fairisleMode: false,
+    fairisleColors: [],
+    showFairisleColors: true,
   } as DesignState,
   mode: "design" as "upload" | "design" | "library",
 };
@@ -68,6 +72,20 @@ const slice = createSlice({
   reducers: {
     setBasePattern: (state, action) => {
       state.basePattern = action.payload;
+      // Sync fairisle colors array with new pattern height if in fairisle mode
+      if (state.designState.fairisleMode) {
+        const newHeight = action.payload.height;
+        const currentColors = state.designState.fairisleColors;
+        const newColors: FairisleRowColors[] = [];
+        for (let i = 0; i < newHeight; i++) {
+          if (i < currentColors.length) {
+            newColors.push(currentColors[i]);
+          } else {
+            newColors.push({ yarn1: [255, 255, 255], yarn2: [0, 0, 0] });
+          }
+        }
+        state.designState.fairisleColors = newColors;
+      }
     },
     setPatternConfig: (state, action) => {
       state.patternConfig = action.payload;
@@ -131,9 +149,71 @@ const slice = createSlice({
       }
 
       state.basePattern = newBitmap;
+
+      // Sync fairisle colors array with new height if in fairisle mode
+      if (state.designState.fairisleMode) {
+        const currentColors = state.designState.fairisleColors;
+        const newColors: FairisleRowColors[] = [];
+        for (let i = 0; i < newHeight; i++) {
+          if (i < currentColors.length) {
+            newColors.push(currentColors[i]);
+          } else {
+            newColors.push({ yarn1: [255, 255, 255], yarn2: [0, 0, 0] });
+          }
+        }
+        state.designState.fairisleColors = newColors;
+      }
     },
     setPaletteIndex(state, action) {
       state.designState.selectedPaletteIndex = action.payload;
+    },
+    setFairisleMode(state, action) {
+      state.designState.fairisleMode = action.payload;
+      // Sync fairisle colors array with base pattern height when enabling
+      if (action.payload) {
+        const height = state.basePattern.height;
+        const currentColors = state.designState.fairisleColors;
+        if (currentColors.length !== height) {
+          const newColors: FairisleRowColors[] = [];
+          for (let i = 0; i < height; i++) {
+            if (i < currentColors.length) {
+              newColors.push(currentColors[i]);
+            } else {
+              // Default colors: white for yarn1, black for yarn2
+              newColors.push({ yarn1: [255, 255, 255], yarn2: [0, 0, 0] });
+            }
+          }
+          state.designState.fairisleColors = newColors;
+        }
+      }
+    },
+    setFairisleRowColor(
+      state,
+      action: { payload: { row: number; yarn: "yarn1" | "yarn2"; color: [number, number, number] } }
+    ) {
+      const { row, yarn, color } = action.payload;
+      if (row >= 0 && row < state.designState.fairisleColors.length) {
+        state.designState.fairisleColors[row][yarn] = color;
+      }
+    },
+    syncFairisleColors(state) {
+      // Ensure fairisle colors array matches base pattern height
+      const height = state.basePattern.height;
+      const currentColors = state.designState.fairisleColors;
+      if (currentColors.length !== height) {
+        const newColors: FairisleRowColors[] = [];
+        for (let i = 0; i < height; i++) {
+          if (i < currentColors.length) {
+            newColors.push(currentColors[i]);
+          } else {
+            newColors.push({ yarn1: [255, 255, 255], yarn2: [0, 0, 0] });
+          }
+        }
+        state.designState.fairisleColors = newColors;
+      }
+    },
+    setShowFairisleColors(state, action: { payload: boolean }) {
+      state.designState.showFairisleColors = action.payload;
     },
   },
 });
@@ -150,6 +230,10 @@ export const {
   setMousePos,
   resizeBitmap,
   setPaletteIndex,
+  setFairisleMode,
+  setFairisleRowColor,
+  syncFairisleColors,
+  setShowFairisleColors,
 } = slice.actions;
 
 export default slice.reducer;

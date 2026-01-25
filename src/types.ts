@@ -52,8 +52,22 @@ export type KnittingState = {
   totalRows: number; // Total rows completed since interactive knitting began
 };
 
+export type FairisleRowColors = {
+  yarn1: RGBColor;
+  yarn2: RGBColor;
+};
+
+export type YarnLibraryEntry = {
+  id: string;
+  name: string;
+  color: RGBColor;
+};
+
 export type DesignState = {
   selectedPaletteIndex: number;
   selectedTool: "brush" | "flood" | "rect" | "line" | "shift";
   mousePos: [number, number] | null;
+  fairisleMode: boolean;
+  fairisleColors: FairisleRowColors[]; // One entry per base pattern row
+  showFairisleColors: boolean; // Whether to display yarn colors or black/white
 };
