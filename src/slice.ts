@@ -23,7 +23,7 @@ export const initialState = {
     marginLeft: 0,
     marginRight: 0,
     height: 20,
-    wrap: true,
+    heightFromTile: true,
   } as PatternConfig,
   machineState: {
     pointCams: [-20, 20],
@@ -50,6 +50,7 @@ export const initialState = {
     patterning: false,
     currentRowNumber: 0,
     carriageSide: "left",
+    totalRows: 0,
   } as KnittingState,
   designState: {
     selectedPaletteIndex: 0,

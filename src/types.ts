@@ -35,6 +35,7 @@ export type PatternConfig = {
   marginLeft: number;
   marginRight: number;
   height: number;
+  heightFromTile: boolean; // If true, use the base tile height (after doubling/mirroring)
 };
 
 export type MachineState = {
@@ -48,6 +49,7 @@ export type KnittingState = {
   currentRowNumber: number;
   carriageSide: "left" | "right";
   row: number[];
+  totalRows: number; // Total rows completed since interactive knitting began
 };
 
 export type DesignState = {

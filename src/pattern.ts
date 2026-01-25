@@ -14,9 +14,8 @@ export function computePattern(
     machineState.pointCams[0] -
     patternConfig.marginLeft -
     patternConfig.marginRight;
-  const patternHeight = patternConfig.height;
-  let pattern = createEmptyBitmap(patternWidth, patternHeight);
 
+  // Compute the base tile (after doubling and mirroring)
   let base = basePattern;
 
   if (patternConfig.double_rows || patternConfig.double_cols) {
@@ -33,6 +32,12 @@ export function computePattern(
   if (patternConfig.mirror_vertical) {
     base = mirrorVertical(base);
   }
+
+  // Use tile height if heightFromTile is enabled, otherwise use manual height
+  const patternHeight = patternConfig.heightFromTile
+    ? base.height
+    : patternConfig.height;
+  let pattern = createEmptyBitmap(patternWidth, patternHeight);
 
   tileBitmap(
     pattern,

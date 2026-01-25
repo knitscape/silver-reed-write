@@ -1,6 +1,6 @@
 import { store } from "./store";
 import { setKnittingState } from "./slice";
-import { selectCurrentRow } from "./selectors";
+import { selectCurrentRow, selectComputedPattern } from "./selectors";
 
 // Binary protocol constants
 const CMD_SET_ROW = 0x02; // Command to set row data (host -> device)
@@ -133,18 +133,18 @@ async function handleRowComplete() {
 
       // Calculate next row number
       let nextRowNumber = appState.knittingState.currentRowNumber + 1;
-      const patternHeight = appState.patternConfig.height;
+      const patternHeight = selectComputedPattern(appState).height;
       if (nextRowNumber >= patternHeight) {
         nextRowNumber = 0;
       }
 
-      // Update both carriage side and row number in a single dispatch
-      // This ensures the store subscription only fires once with the correct state
+      // Update carriage side, row number, and increment total rows
       store.dispatch(
         setKnittingState({
           ...appState.knittingState,
           carriageSide: newSide,
           currentRowNumber: nextRowNumber,
+          totalRows: appState.knittingState.totalRows + 1,
         }),
       );
 

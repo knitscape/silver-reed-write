@@ -270,6 +270,7 @@ function patternConfig() {
             <span class="label">Height</span>
             <input
               value=${patternConfig.height}
+              ?disabled=${patternConfig.heightFromTile}
               @change=${(e: Event) => {
                 const value = (e.target as HTMLInputElement).value;
                 store.dispatch(
@@ -282,6 +283,21 @@ function patternConfig() {
               type="number"
               min="0"
               max="1000" />
+          </label>
+          <label class="label">
+            <input
+              type="checkbox"
+              class="toggle toggle-xs"
+              ?checked=${patternConfig.heightFromTile}
+              @change=${(e: Event) => {
+                store.dispatch(
+                  setPatternConfig({
+                    ...patternConfig,
+                    heightFromTile: (e.target as HTMLInputElement).checked,
+                  }),
+                );
+              }} />
+            From base tile
           </label>
         </fieldset>
       </div>
@@ -400,8 +416,9 @@ function disconnectedBtns() {
 
 function interactiveKnitting() {
   const state = store.getState();
-  const height = state.patternConfig.height;
-  const width = selectComputedPattern(state).width;
+  const computedPattern = selectComputedPattern(state);
+  const height = computedPattern.height;
+  const width = computedPattern.width;
 
   const currentRow = state.knittingState.currentRowNumber;
   const connected = serial.connected();
@@ -449,6 +466,22 @@ function interactiveKnitting() {
       <span class="text-sm"
         >Row: ${state.knittingState.currentRowNumber + 1}</span
       >
+      <label class="input input-xs w-[140px]">
+        <span class="label">Total rows</span>
+        <input
+          type="number"
+          min="0"
+          .value=${String(state.knittingState.totalRows)}
+          @change=${(e: Event) => {
+            const value = parseInt((e.target as HTMLInputElement).value) || 0;
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                totalRows: Math.max(0, value),
+              }),
+            );
+          }} />
+      </label>
     </div>
     <div class="flex flex-row justify-center m-5 overflow-hidden">
       <div
