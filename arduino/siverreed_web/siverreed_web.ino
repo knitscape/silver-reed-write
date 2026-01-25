@@ -1,6 +1,4 @@
-// Knitting Machine Interface with Web Communication (Arduino C version)
-
-// Pin definitions (using the same GPIO numbers as the MicroPython version)
+// Pin definitions
 // const int ND1 = 3;             // (DIN 1) ND1: Needle 1, sets the position of the pattern
 const int CAMS_PIN = 4;        // (DIN 2) KSL: Point Cam. High = in knitting range
 const int OUT_PIN = 28;        // (DIN 3) DOB: Data Out Buffer. Black pixel is off, White pixel is on
@@ -28,7 +26,7 @@ bool lastND1State = LOW;
 bool lastDirectionState = LOW;
 bool risingEdgeSeen = false;
 
-// Safety: track how long OUT has been on
+// Safety: track how long OUT solenoidhas been on
 unsigned long outOnSince = 0;              // millis() when OUT was turned on, 0 if off
 const unsigned long OUT_MAX_ON_MS = 3000;  // Maximum time OUT can stay on (3 seconds)
 
@@ -93,8 +91,8 @@ void processSerial() {
     patternReady = true;
     
     Serial.print("Received pattern, length=");
-    Serial.println(length);
-    Serial.print("Pattern: ");
+    Serial.print(length);
+    Serial.print(": ");
     for (int i = 0; i < length; i++) {
       Serial.print(pattern[i]);
     }

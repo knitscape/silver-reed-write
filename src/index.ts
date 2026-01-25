@@ -416,9 +416,39 @@ function interactiveKnitting() {
       ${connected ? connectedBtns() : disconnectedBtns()}
     </div>
 
-    <div class="flex flex-row gap-1">
-      <span>Side: ${state.knittingState.carriageSide}</span>
-      <span>Current Row: ${state.knittingState.currentRowNumber}</span>
+    <div class="flex flex-row gap-2 items-center p-1">
+      <span class="text-sm">Carriage:</span>
+      <div class="join">
+        <input
+          type="radio"
+          name="carriage-side"
+          class="join-item btn btn-xs"
+          aria-label="Left"
+          .checked=${state.knittingState.carriageSide === "left"}
+          @click=${() =>
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                carriageSide: "left",
+              }),
+            )} />
+        <input
+          type="radio"
+          name="carriage-side"
+          class="join-item btn btn-xs"
+          aria-label="Right"
+          .checked=${state.knittingState.carriageSide === "right"}
+          @click=${() =>
+            store.dispatch(
+              setKnittingState({
+                ...state.knittingState,
+                carriageSide: "right",
+              }),
+            )} />
+      </div>
+      <span class="text-sm"
+        >Row: ${state.knittingState.currentRowNumber + 1}</span
+      >
     </div>
     <div class="flex flex-row justify-center m-5 overflow-hidden">
       <div

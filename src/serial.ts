@@ -1,5 +1,5 @@
 import { store } from "./store";
-import { advanceRow, setKnittingState } from "./slice";
+import { setKnittingState } from "./slice";
 import { selectCurrentRow } from "./selectors";
 
 // Binary protocol constants
@@ -14,6 +14,41 @@ let readBuffer = new Uint8Array(0);
 let textBuffer = ""; // Buffer for accumulating text from Serial.println()
 let writeInProgress = false;
 let processingRowComplete = false;
+
+// Track previous state for detecting changes
+let prevPatterning = false;
+let prevCurrentRowNumber = 0;
+let prevCarriageSide = "left";
+
+// Subscribe to store changes to send rows when needed
+store.subscribe(() => {
+  const state = store.getState();
+  const { patterning, currentRowNumber, carriageSide } = state.knittingState;
+
+  // Check if we need to send a row
+  const patterningJustStarted = patterning && !prevPatterning;
+  const rowOrSideChanged =
+    patterning &&
+    (currentRowNumber !== prevCurrentRowNumber ||
+      carriageSide !== prevCarriageSide);
+
+  if (patterningJustStarted || rowOrSideChanged) {
+    // Send the current row to the device
+    const row = selectCurrentRow(state);
+    if (row.length > 0 && port) {
+      console.log(
+        `Sending row ${currentRowNumber} (side: ${carriageSide}):`,
+        row,
+      );
+      writePatternRow(row);
+    }
+  }
+
+  // Update previous state
+  prevPatterning = patterning;
+  prevCurrentRowNumber = currentRowNumber;
+  prevCarriageSide = carriageSide;
+});
 
 async function connect() {
   try {
@@ -92,18 +127,27 @@ async function handleRowComplete() {
   try {
     const appState = store.getState();
     if (appState.knittingState.patterning) {
-      const currentRowNum = appState.knittingState.currentRowNumber;
       const currentSide = appState.knittingState.carriageSide;
       // Toggle carriage side: left -> right, right -> left
       const newSide = currentSide === "left" ? "right" : "left";
-      // Update carriage side first, then advance row
+
+      // Calculate next row number
+      let nextRowNumber = appState.knittingState.currentRowNumber + 1;
+      const patternHeight = appState.patternConfig.height;
+      if (nextRowNumber >= patternHeight) {
+        nextRowNumber = 0;
+      }
+
+      // Update both carriage side and row number in a single dispatch
+      // This ensures the store subscription only fires once with the correct state
       store.dispatch(
         setKnittingState({
           ...appState.knittingState,
           carriageSide: newSide,
+          currentRowNumber: nextRowNumber,
         }),
       );
-      store.dispatch(advanceRow());
+
       // Wait a bit to ensure the row send completes before processing next message
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
