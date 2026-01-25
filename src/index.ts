@@ -15,6 +15,7 @@ import {
   setFairisleRowColor,
   syncFairisleColors,
   setShowFairisleColors,
+  swapFairisleYarns,
 } from "./slice";
 import {
   createBitmapFromImage,
@@ -1051,17 +1052,25 @@ function patternDesign() {
       </label>
       ${state.designState.fairisleMode
         ? html`<label class="label text-xs gap-1">
-            <input
-              type="checkbox"
-              class="checkbox checkbox-xs"
-              .checked=${state.designState.showFairisleColors}
-              @change=${(e: Event) => {
-                store.dispatch(
-                  setShowFairisleColors((e.target as HTMLInputElement).checked),
-                );
-              }} />
-            Show colors
-          </label>`
+              <input
+                type="checkbox"
+                class="checkbox checkbox-xs"
+                .checked=${state.designState.showFairisleColors}
+                @change=${(e: Event) => {
+                  store.dispatch(
+                    setShowFairisleColors(
+                      (e.target as HTMLInputElement).checked,
+                    ),
+                  );
+                }} />
+              Show colors
+            </label>
+            <button
+              class="btn btn-xs btn-ghost"
+              @click=${() => store.dispatch(swapFairisleYarns())}
+              title="Swap yarn 1 and yarn 2 for all rows">
+              Swap yarns
+            </button>`
         : null}
       <div class="flex flex-1"></div>
       <div class="tabs tabs-xs tabs-box">

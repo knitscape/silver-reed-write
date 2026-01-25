@@ -118,6 +118,9 @@ const afterReducerMiddleware = (store) => (next) => async (action) => {
     case "controller/setShowFairisleColors":
       redrawPatterns(newState);
       break;
+    case "controller/swapFairisleYarns":
+      redrawPatterns(newState);
+      break;
   }
 
   return result;

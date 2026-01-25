@@ -215,6 +215,15 @@ const slice = createSlice({
     setShowFairisleColors(state, action: { payload: boolean }) {
       state.designState.showFairisleColors = action.payload;
     },
+    swapFairisleYarns(state) {
+      // Swap yarn1 and yarn2 for all rows
+      state.designState.fairisleColors = state.designState.fairisleColors.map(
+        (row) => ({
+          yarn1: row.yarn2,
+          yarn2: row.yarn1,
+        })
+      );
+    },
   },
 });
 
@@ -234,6 +243,7 @@ export const {
   setFairisleRowColor,
   syncFairisleColors,
   setShowFairisleColors,
+  swapFairisleYarns,
 } = slice.actions;
 
 export default slice.reducer;
