@@ -1,26 +1,4 @@
-import { RGBColor } from "./bitmap";
-
-export type Yarn = {
-  color: RGBColor;
-};
-
-export type SingleYarnConfig = {
-  yarn: Yarn;
-};
-
-export type FairisleConfig = {
-  feeder_1: Yarn; // Main yarn
-  feeder_2: Yarn; // Contrast yarn
-};
-
-export type YarnChangerConfig = {
-  a: Yarn | null;
-  b: Yarn | null;
-  c: Yarn | null;
-  d: Yarn | null;
-};
-
-export type YarnConfig = FairisleConfig | YarnChangerConfig | SingleYarnConfig;
+import { RGBColor } from "./utils/bitmap";
 
 export type PatternConfig = {
   double_cols: boolean;
@@ -38,18 +16,12 @@ export type PatternConfig = {
   heightFromTile: boolean; // If true, use the base tile height (after doubling/mirroring)
 };
 
-export type MachineState = {
+export type KnittingState = {
   pointCams: [number, number];
   carriageSide: "left" | "right";
-  yarnConfig: YarnConfig;
-};
-
-export type KnittingState = {
-  patterning: boolean; // If we are doing auto patterning
-  currentRowNumber: number;
-  carriageSide: "left" | "right";
-  row: number[];
-  totalRows: number; // Total rows completed since interactive knitting began
+  patterning: boolean; // If interactive patterning is active
+  currentRowNumber: number; // Current row number in the pattern
+  totalRows: number; // Total row counter
 };
 
 export type FairisleRowColors = {

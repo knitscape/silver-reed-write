@@ -1,17 +1,16 @@
-import { createEmptyBitmap, paletteIndexAt } from "./bitmap";
+import { createEmptyBitmap, paletteIndexAt } from "./utils/bitmap";
 
-import { Bitmap } from "./bitmap";
-import { MachineState } from "./types";
-import { PatternConfig } from "./types";
+import { Bitmap } from "./utils/bitmap";
+import { KnittingState, PatternConfig } from "./types";
 
 export function computePattern(
   basePattern: Bitmap,
   patternConfig: PatternConfig,
-  machineState: MachineState
+  knittingState: KnittingState,
 ) {
   const patternWidth =
-    machineState.pointCams[1] -
-    machineState.pointCams[0] -
+    knittingState.pointCams[1] -
+    knittingState.pointCams[0] -
     patternConfig.marginLeft -
     patternConfig.marginRight;
 
@@ -22,7 +21,7 @@ export function computePattern(
     base = doubleBitmap(
       basePattern,
       patternConfig.double_cols,
-      patternConfig.double_rows
+      patternConfig.double_rows,
     );
   }
 
@@ -44,7 +43,7 @@ export function computePattern(
     base,
     patternConfig.repeat_horizontal,
     patternConfig.repeat_vertical,
-    patternConfig.alignment
+    patternConfig.alignment,
   );
 
   if (patternConfig.endNeedleSelection) {
@@ -62,7 +61,7 @@ export function computePattern(
   pattern = addPadding(
     pattern,
     patternConfig.marginLeft,
-    patternConfig.marginRight
+    patternConfig.marginRight,
   );
 
   return pattern;
@@ -73,7 +72,7 @@ function tileBitmap(
   baseBitmap: Bitmap,
   repeatHorizontal: boolean = true,
   repeatVertical: boolean = true,
-  alignment: "left" | "center" | "right" = "left"
+  alignment: "left" | "center" | "right" = "left",
 ) {
   // First update the palette by copying colors from base bitmap
   bitmap.palette = [...baseBitmap.palette];
@@ -126,7 +125,7 @@ function tileBitmap(
 function doubleBitmap(
   bitmap: Bitmap,
   doubleCols: boolean = false,
-  doubleRows: boolean = false
+  doubleRows: boolean = false,
 ): Bitmap {
   // Calculate new dimensions
   const newWidth = doubleCols ? bitmap.width : bitmap.width * 2;

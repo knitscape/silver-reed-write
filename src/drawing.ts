@@ -1,9 +1,9 @@
-import { Bitmap } from "./bitmap";
+import { Bitmap } from "./utils/bitmap";
 import { FairisleRowColors, PatternConfig } from "./types";
 
 export function drawBitmapToCanvas(
   canvasElement: HTMLCanvasElement,
-  bitmap: Bitmap
+  bitmap: Bitmap,
 ) {
   canvasElement.width = bitmap.width;
   canvasElement.height = bitmap.height;
@@ -30,7 +30,7 @@ export function drawBitmapWithFairisleColors(
   canvasElement: HTMLCanvasElement,
   bitmap: Bitmap,
   fairisleColors: FairisleRowColors[],
-  getBaseRow: (bitmapRow: number) => number // Function to map bitmap row to base pattern row
+  getBaseRow: (bitmapRow: number) => number, // Function to map bitmap row to base pattern row
 ) {
   canvasElement.width = bitmap.width;
   canvasElement.height = bitmap.height;
@@ -66,7 +66,7 @@ export function drawBitmapWithFairisleColors(
 // Create a function to map computed pattern rows back to base pattern rows
 export function createRowMapper(
   basePatternHeight: number,
-  patternConfig: PatternConfig
+  patternConfig: PatternConfig,
 ): (computedRow: number) => number {
   // Calculate the tile height after transformations
   let tileHeight = basePatternHeight;
@@ -102,7 +102,7 @@ export function createRowMapper(
 
 export function fitCanvasToParent(
   canvas: HTMLCanvasElement,
-  aspectRatio: number
+  aspectRatio: number,
 ) {
   const parent = document.getElementById("artboard-container");
   if (!parent) {
@@ -121,54 +121,4 @@ export function fitCanvasToParent(
     canvas.style.width = `${parentWidth}px`;
     canvas.style.height = `${parentWidth / aspectRatio}px`;
   }
-}
-
-export function drawPreviewPattern(
-  bitmap: Bitmap,
-  fairisleColors?: FairisleRowColors[] | null
-) {
-  // Draw the bitmap to the preview canvas
-  const previewCanvas = document.getElementById(
-    "preview-canvas"
-  ) as HTMLCanvasElement;
-  const aspectRatio = bitmap.width / bitmap.height;
-  fitCanvasToParent(previewCanvas, aspectRatio);
-
-  if (fairisleColors && fairisleColors.length > 0) {
-    // For the base pattern preview, row mapping is just identity
-    drawBitmapWithFairisleColors(previewCanvas, bitmap, fairisleColors, (row) =>
-      row % fairisleColors.length
-    );
-  } else {
-    drawBitmapToCanvas(previewCanvas, bitmap);
-  }
-}
-
-export function drawComputedPattern(
-  computedPattern: Bitmap,
-  fairisleColors?: FairisleRowColors[] | null,
-  patternConfig?: PatternConfig | null,
-  basePatternHeight?: number
-) {
-  const canvas = document.getElementById("pattern-canvas") as HTMLCanvasElement;
-
-  if (
-    fairisleColors &&
-    fairisleColors.length > 0 &&
-    patternConfig &&
-    basePatternHeight
-  ) {
-    const rowMapper = createRowMapper(basePatternHeight, patternConfig);
-    drawBitmapWithFairisleColors(
-      canvas,
-      computedPattern,
-      fairisleColors,
-      rowMapper
-    );
-  } else {
-    drawBitmapToCanvas(canvas, computedPattern);
-  }
-
-  canvas.style.width = `${computedPattern.width * 20}px`;
-  canvas.style.height = `${computedPattern.height * 20}px`;
 }

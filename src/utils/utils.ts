@@ -10,7 +10,7 @@ export function isLeftClick(e: PointerEvent) {
 
 export function getPointerPositionInElement(
   e: PointerEvent,
-  element: HTMLElement
+  element: HTMLElement,
 ) {
   const rect = element.getBoundingClientRect();
   return {
@@ -25,7 +25,7 @@ export function getCurrentCellSize(rect: DOMRect, bitmap: Bitmap) {
 
 export function getCellFromEvent(
   e: PointerEvent,
-  bitmap: Bitmap
+  bitmap: Bitmap,
 ): [number, number] {
   const canvas = document.getElementById("preview-canvas") as HTMLCanvasElement;
   const rect = canvas.getBoundingClientRect();

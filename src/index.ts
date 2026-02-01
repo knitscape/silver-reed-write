@@ -1,33 +1,38 @@
 import { html, render } from "lit-html";
-import { serial } from "./serial";
+import { serial } from "./interactive-knitting/serial";
+import { setMode } from "./appSlice";
+import {
+  setPatternConfig,
+  setKnittingState,
+} from "./interactive-knitting/knittingSlice";
 import {
   drawChanges,
   resizeBitmap,
   setBasePattern,
-  setKnittingState,
-  setMachineState,
-  setMode,
   setMousePos,
   setPaletteIndex,
-  setPatternConfig,
   setTool,
   setFairisleMode,
   setFairisleRowColor,
   setShowFairisleColors,
   swapFairisleYarns,
-} from "./slice";
+} from "./pattern-design/designSlice";
 import {
   createBitmapFromImage,
   createEmptyBitmap,
   bitmapEditingTools,
   bitmapToPNGDataURL,
   RGBColor,
-} from "./bitmap";
-import { isLeftClick, getCellFromEvent, getCurrentCellSize } from "./utils";
+} from "./utils/bitmap";
+import {
+  isLeftClick,
+  getCellFromEvent,
+  getCurrentCellSize,
+} from "./utils/utils";
 import { store } from "./store";
-import { drawComputedPattern, drawPreviewPattern } from "./drawing";
+import { drawDesignPattern } from "./pattern-design/drawDesign";
+import { drawComputedPattern } from "./interactive-knitting/drawComputed";
 import { selectComputedPattern } from "./selectors";
-import Split from "split.js";
 import { getYarnLibrary, addYarn, updateYarn, removeYarn } from "./yarnLibrary";
 
 // Helper functions for color conversion
@@ -373,8 +378,8 @@ window.addEventListener("pointerup", onPointerUp);
 
 function patternConfig() {
   const state = store.getState();
-  const patternConfig = state.patternConfig;
-  const machineState = state.machineState;
+  const patternConfig = state.knitting.patternConfig;
+  const knittingState = state.knitting.knittingState;
 
   return html`
     <div class="bg-base-200 flex flex-col border-l-1 border-gray-500">
@@ -388,13 +393,13 @@ function patternConfig() {
           <label class="input input-xs">
             <span class="label">Left</span>
             <input
-              value=${machineState.pointCams[0]}
+              value=${knittingState.pointCams[0]}
               @change=${(e: Event) => {
                 const value = (e.target as HTMLInputElement).value;
                 store.dispatch(
-                  setMachineState({
-                    ...machineState,
-                    pointCams: [parseInt(value), machineState.pointCams[1]],
+                  setKnittingState({
+                    ...knittingState,
+                    pointCams: [parseInt(value), knittingState.pointCams[1]],
                   }),
                 );
               }}
@@ -406,13 +411,13 @@ function patternConfig() {
           <label class="input input-xs">
             <span class="label">Right</span>
             <input
-              value=${machineState.pointCams[1]}
+              value=${knittingState.pointCams[1]}
               @change=${(e: Event) => {
                 const value = (e.target as HTMLInputElement).value;
                 store.dispatch(
-                  setMachineState({
-                    ...machineState,
-                    pointCams: [machineState.pointCams[0], parseInt(value)],
+                  setKnittingState({
+                    ...knittingState,
+                    pointCams: [knittingState.pointCams[0], parseInt(value)],
                   }),
                 );
               }}
@@ -669,36 +674,6 @@ function patternConfig() {
   `;
 }
 
-function patternUpload() {
-  const state = store.getState();
-
-  return html`
-    <div class="flex flex-row gap-1 items-center justify-center p-1">
-      <input
-        type="file"
-        class="file-input file-input-xs"
-        @change=${async (e: Event) => {
-          const file = (e.target as HTMLInputElement).files?.[0];
-          if (file) {
-            try {
-              const bitmap = await createBitmapFromImage(file);
-              store.dispatch(setBasePattern(bitmap));
-            } catch (error) {
-              console.error("Failed to load PNG:", error);
-            }
-          }
-        }} />
-      <span class="text-sm">Width: ${state.basePattern.width}</span>
-      <span class="text-sm">Height: ${state.basePattern.height}</span>
-    </div>
-    <div
-      id="artboard-container"
-      class="flex flex-1 items-center justify-center overflow-hidden">
-      <canvas id="preview-canvas" class="border-1 border-black"></canvas>
-    </div>
-  `;
-}
-
 function getRow(e: PointerEvent, height: number) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
   let y = e.clientY - rect.top;
@@ -735,7 +710,7 @@ function needles(pointCams: [number, number]) {
 
 function connectedBtns() {
   const state = store.getState();
-  const active = state.knittingState.patterning;
+  const active = state.knitting.knittingState.patterning;
   return html`
     <button @click=${serial.disconnect} class="btn btn-xs btn-neutral">
       Disconnect
@@ -749,7 +724,7 @@ function connectedBtns() {
           @click=${() =>
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 patterning: false,
               }),
             )}
@@ -760,7 +735,7 @@ function connectedBtns() {
           @click=${() =>
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 patterning: true,
               }),
             )}
@@ -784,10 +759,12 @@ function interactiveKnitting() {
   const height = computedPattern.height;
   const width = computedPattern.width;
 
-  const currentRow = state.knittingState.currentRowNumber;
+  const currentRow = state.knitting.knittingState.currentRowNumber;
   const connected = serial.connected();
 
   return html` <div
+    class="flex flex-1 flex-col overflow-hidden min-h-0 min-w-0">
+    <div
       class="flex gap-2 items-center p-1 shadow-sm ${connected
         ? "bg-primary text-primary-content"
         : "bg-neutral text-neutral-content"}">
@@ -805,11 +782,11 @@ function interactiveKnitting() {
           name="carriage-side"
           class="join-item btn btn-xs"
           aria-label="Left"
-          .checked=${state.knittingState.carriageSide === "left"}
+          .checked=${state.knitting.knittingState.carriageSide === "left"}
           @click=${() =>
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 carriageSide: "left",
               }),
             )} />
@@ -818,29 +795,29 @@ function interactiveKnitting() {
           name="carriage-side"
           class="join-item btn btn-xs"
           aria-label="Right"
-          .checked=${state.knittingState.carriageSide === "right"}
+          .checked=${state.knitting.knittingState.carriageSide === "right"}
           @click=${() =>
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 carriageSide: "right",
               }),
             )} />
       </div>
       <span class="text-sm"
-        >Row: ${state.knittingState.currentRowNumber + 1}</span
+        >Row: ${state.knitting.knittingState.currentRowNumber + 1}</span
       >
       <label class="input input-xs w-[140px]">
         <span class="label">Total rows</span>
         <input
           type="number"
           min="0"
-          .value=${String(state.knittingState.totalRows)}
+          .value=${String(state.knitting.knittingState.totalRows)}
           @change=${(e: Event) => {
             const value = parseInt((e.target as HTMLInputElement).value) || 0;
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 totalRows: Math.max(0, value),
               }),
             );
@@ -852,7 +829,7 @@ function interactiveKnitting() {
           if (confirm("Reset total row count to zero?")) {
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 totalRows: 0,
               }),
             );
@@ -861,7 +838,8 @@ function interactiveKnitting() {
         Reset
       </button>
     </div>
-    <div class="flex flex-row justify-center m-5 overflow-hidden">
+    <div
+      class="flex flex-1 flex-row justify-center m-5 overflow-hidden min-h-0">
       <div
         class="border-1 border-black overflow-y-auto bg-base-200 shadow-[0_0_10px_0_rgba(0,0,0,0.5)]">
         <div
@@ -871,7 +849,7 @@ function interactiveKnitting() {
             const row = height - getRow(e, height) - 1;
             store.dispatch(
               setKnittingState({
-                ...state.knittingState,
+                ...state.knitting.knittingState,
                 currentRowNumber: row,
               }),
             );
@@ -908,34 +886,35 @@ function interactiveKnitting() {
           <div
             id="bottom-gutter"
             class="flex sticky bottom-0 h-[20px] text-center items-center font-mono border-t-1 border-black bg-base-200">
-            ${needles(state.machineState.pointCams)}
+            ${needles(state.knitting.knittingState.pointCams)}
           </div>
           <div
             class="bg-base-200 sticky bottom-0 border-t-1 border-black"></div>
         </div>
       </div>
-    </div>`;
+    </div>
+  </div>`;
 }
 
 function dragTool(startCell: [number, number]) {
   const state = store.getState();
   let lastCell = startCell;
 
-  let tool = bitmapEditingTools[state.designState.selectedTool];
+  let tool = bitmapEditingTools[state.design.designState.selectedTool];
   let onEnterCell = tool(
-    state.basePattern,
+    state.design.basePattern,
     lastCell,
-    state.designState.selectedPaletteIndex,
+    state.design.designState.selectedPaletteIndex,
   );
 
   const changes = onEnterCell(lastCell);
-  store.dispatch(drawChanges(changes));
+  store.dispatch(drawChanges(changes as [number, number, number][]));
 
   function pointerMove(currentCell: [number, number]) {
     if (currentCell[0] === lastCell[0] && currentCell[1] === lastCell[1])
       return;
     const changes = onEnterCell(currentCell);
-    store.dispatch(drawChanges(changes));
+    store.dispatch(drawChanges(changes as [number, number, number][]));
 
     lastCell = currentCell;
   }
@@ -945,13 +924,13 @@ function dragTool(startCell: [number, number]) {
 
 function onArtboardDown(e: PointerEvent) {
   if (!isLeftClick(e)) return;
-  const cell = getCellFromEvent(e, store.getState().basePattern);
+  const cell = getCellFromEvent(e, store.getState().design.basePattern);
 
   onToolMove = dragTool(cell);
 }
 
 function artboardPointerMove(e: PointerEvent) {
-  const cell = getCellFromEvent(e, store.getState().basePattern);
+  const cell = getCellFromEvent(e, store.getState().design.basePattern);
   store.dispatch(setMousePos(cell));
 
   if (onToolMove) {
@@ -961,27 +940,52 @@ function artboardPointerMove(e: PointerEvent) {
 
 function patternDesign() {
   const state = store.getState();
-  const tool = state.designState.selectedTool;
+  const tool = state.design.designState.selectedTool;
   const canvas = document.getElementById("preview-canvas") as HTMLCanvasElement;
   const cellSize = canvas
-    ? getCurrentCellSize(canvas.getBoundingClientRect(), state.basePattern)
+    ? getCurrentCellSize(
+        canvas.getBoundingClientRect(),
+        state.design.basePattern,
+      )
     : null;
 
-  const mousePos = state.designState.mousePos;
-  const paletteIndex = state.designState.selectedPaletteIndex;
+  const mousePos = state.design.designState.mousePos;
+  const paletteIndex = state.design.designState.selectedPaletteIndex;
 
   return html`
     <div class="flex flex-row items-center bg-base-200 gap-1 shadow-sm p-1">
+      <input
+        type="file"
+        accept="image/png"
+        class="hidden"
+        id="load-image-input"
+        @change=${async (e: Event) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            try {
+              const bitmap = await createBitmapFromImage(file);
+              store.dispatch(setBasePattern(bitmap));
+            } catch (error) {
+              console.error("Failed to load PNG:", error);
+            }
+            (e.target as HTMLInputElement).value = "";
+          }
+        }} />
+      <button
+        class="btn btn-xs btn-neutral"
+        @click=${() => document.getElementById("load-image-input")?.click()}>
+        Load image
+      </button>
       <label class="input input-xs w-[130px]">
         <span class="label">Width</span>
         <input
-          value=${state.basePattern.width}
+          value=${state.design.basePattern.width}
           @change=${(e: Event) => {
             const value = (e.target as HTMLInputElement).value;
             store.dispatch(
               resizeBitmap({
                 width: parseInt(value),
-                height: state.basePattern.height,
+                height: state.design.basePattern.height,
               }),
             );
           }}
@@ -993,12 +997,12 @@ function patternDesign() {
       <label class="input input-xs w-[130px]">
         <span class="label">Height</span>
         <input
-          value=${state.basePattern.height}
+          value=${state.design.basePattern.height}
           @change=${(e: Event) => {
             const value = (e.target as HTMLInputElement).value;
             store.dispatch(
               resizeBitmap({
-                width: state.basePattern.width,
+                width: state.design.basePattern.width,
                 height: parseInt(value),
               }),
             );
@@ -1014,8 +1018,8 @@ function patternDesign() {
           store.dispatch(
             setBasePattern(
               createEmptyBitmap(
-                state.basePattern.width,
-                state.basePattern.height,
+                state.design.basePattern.width,
+                state.design.basePattern.height,
                 [0, 0, 0],
                 [
                   [0, 0, 0],
@@ -1031,7 +1035,7 @@ function patternDesign() {
         class="btn btn-xs btn-accent"
         @click=${() => {
           const link = document.createElement("a");
-          link.href = bitmapToPNGDataURL(state.basePattern);
+          link.href = bitmapToPNGDataURL(state.design.basePattern);
           link.download = "pattern.png";
           link.click();
         }}>
@@ -1041,7 +1045,7 @@ function patternDesign() {
         <input
           type="checkbox"
           class="checkbox checkbox-xs"
-          .checked=${state.designState.fairisleMode}
+          .checked=${state.design.designState.fairisleMode}
           @change=${(e: Event) => {
             store.dispatch(
               setFairisleMode((e.target as HTMLInputElement).checked),
@@ -1049,12 +1053,12 @@ function patternDesign() {
           }} />
         Fairisle?
       </label>
-      ${state.designState.fairisleMode
+      ${state.design.designState.fairisleMode
         ? html`<label class="label text-xs gap-1">
               <input
                 type="checkbox"
                 class="checkbox checkbox-xs"
-                .checked=${state.designState.showFairisleColors}
+                .checked=${state.design.designState.showFairisleColors}
                 @change=${(e: Event) => {
                   store.dispatch(
                     setShowFairisleColors(
@@ -1091,7 +1095,7 @@ function patternDesign() {
     <div class="flex flex-1 flex-row gap-1 overflow-hidden p-2">
       <div
         class="flex flex-col gap-1 bg-base-100 shadow-sm self-center p-1 rounded-md">
-        ${state.basePattern.palette.map(
+        ${state.design.basePattern.palette.map(
           (color, index) =>
             html`<div
               class="w-[30px] h-[30px] rounded-sm shadow-sm cursor-pointer ${index ===
@@ -1125,9 +1129,9 @@ function patternDesign() {
               cellSize}px; width: ${cellSize}px"></div>`}
         </div>
       </div>
-      ${state.designState.fairisleMode && cellSize
+      ${state.design.designState.fairisleMode && cellSize
         ? html`${getFairisleColorGrid(
-            state.designState.fairisleColors,
+            state.design.designState.fairisleColors,
             cellSize,
           )}
           ${getFairisleYarnPalette()}`
@@ -1136,36 +1140,30 @@ function patternDesign() {
   `;
 }
 
-function patternLibrary() {
-  return html`library`;
-}
-
-function basePatternMode() {
-  const mode = store.getState().mode;
-  switch (mode) {
-    case "upload":
-      return patternUpload();
-    case "design":
-      return patternDesign();
-    case "library":
-      return patternLibrary();
+function mainContent() {
+  const mode = store.getState().app.mode;
+  if (mode === "design") {
+    return patternDesign();
   }
+  // knit: pattern config + interactive knitting
+  return html`
+    <div class="flex flex-1 flex-row overflow-hidden min-h-0">
+      ${patternConfig()}
+      <div class="flex-1 flex flex-col overflow-hidden min-w-0">
+        ${interactiveKnitting()}
+      </div>
+    </div>
+  `;
 }
 
-function patternSetup() {
-  const mode = store.getState().mode;
+function tabBar() {
+  const mode = store.getState().app.mode;
 
-  return html`<div class="flex flex-1 flex-col">
+  return html`
     <div
       class="flex flex-row gap-1 items-center bg-neutral text-neutral-content p-1">
       <span class="font-bold">Silver Reed/Write Controller</span>
       <div role="tablist" class="tabs tabs-border tabs-xs flex-1">
-        <button
-          role="tab"
-          class="tab ${mode === "upload" ? "tab-active" : ""}"
-          @click=${() => store.dispatch(setMode("upload"))}>
-          Upload
-        </button>
         <button
           role="tab"
           class="tab ${mode === "design" ? "tab-active" : ""}"
@@ -1174,30 +1172,23 @@ function patternSetup() {
         </button>
         <button
           role="tab"
-          class="tab ${mode === "library" ? "tab-active" : ""}"
-          @click=${() => store.dispatch(setMode("library"))}>
-          Library
+          class="tab ${mode === "knit" ? "tab-active" : ""}"
+          @click=${() => store.dispatch(setMode("knit"))}>
+          Knit
         </button>
       </div>
     </div>
-    <div
-      id="base-pattern-content-container"
-      class="flex-1 flex flex-col overflow-hidden">
-      ${basePatternMode()}
-    </div>
-  </div>`;
+  `;
 }
 
 function view() {
   return html`
     <div class="flex flex-col h-screen overflow-hidden">
-      <div id="pattern-setup-container" class="flex flex-row bg-base-300">
-        ${patternSetup()} ${patternConfig()}
-      </div>
+      ${tabBar()}
       <div
-        id="interactive-knitting-container"
-        class="flex flex-col overflow-hidden bg-base-300">
-        ${interactiveKnitting()}
+        id="main-content"
+        class="flex-1 flex flex-col overflow-hidden min-h-0 bg-base-300">
+        ${mainContent()}
       </div>
     </div>
     ${addYarnModal()} ${editYarnModal()}
@@ -1212,11 +1203,11 @@ function r() {
 // Helper to get fairisle colors if fairisle mode is enabled and colors should be shown
 function getFairisleColorsForDrawing(state: ReturnType<typeof store.getState>) {
   if (
-    state.designState.fairisleMode &&
-    state.designState.showFairisleColors &&
-    state.designState.fairisleColors.length > 0
+    state.design.designState.fairisleMode &&
+    state.design.designState.showFairisleColors &&
+    state.design.designState.fairisleColors.length > 0
   ) {
-    return state.designState.fairisleColors;
+    return state.design.designState.fairisleColors;
   }
   return null;
 }
@@ -1224,22 +1215,17 @@ function getFairisleColorsForDrawing(state: ReturnType<typeof store.getState>) {
 document.addEventListener("DOMContentLoaded", () => {
   r();
 
-  Split(["#pattern-setup-container", "#interactive-knitting-container"], {
-    sizes: [50, 50],
-    direction: "vertical",
-    onDrag: () => {
-      const state = store.getState();
-      const fairisleColors = getFairisleColorsForDrawing(state);
-      drawPreviewPattern(state.basePattern, fairisleColors);
-    },
-  });
   const initialState = store.getState();
   const fairisleColors = getFairisleColorsForDrawing(initialState);
-  drawPreviewPattern(initialState.basePattern, fairisleColors);
-  drawComputedPattern(
-    selectComputedPattern(initialState),
-    fairisleColors,
-    initialState.patternConfig,
-    initialState.basePattern.height,
-  );
+
+  if (initialState.app.mode === "design") {
+    drawDesignPattern(initialState.design.basePattern, fairisleColors);
+  } else {
+    drawComputedPattern(
+      selectComputedPattern(initialState),
+      fairisleColors,
+      initialState.knitting.patternConfig,
+      initialState.design.basePattern.height,
+    );
+  }
 });

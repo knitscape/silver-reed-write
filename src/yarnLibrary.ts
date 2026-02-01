@@ -1,5 +1,5 @@
 import { YarnLibraryEntry } from "./types";
-import { RGBColor } from "./bitmap";
+import { RGBColor } from "./utils/bitmap";
 
 const YARN_LIBRARY_KEY = "silver-reed-write-yarn-library";
 
@@ -84,7 +84,10 @@ export function findYarnById(id: string): YarnLibraryEntry | undefined {
 // Find a yarn by color (exact match)
 export function findYarnByColor(color: RGBColor): YarnLibraryEntry | undefined {
   return getYarnLibrary().find(
-    (y) => y.color[0] === color[0] && y.color[1] === color[1] && y.color[2] === color[2]
+    (y) =>
+      y.color[0] === color[0] &&
+      y.color[1] === color[1] &&
+      y.color[2] === color[2],
   );
 }
 

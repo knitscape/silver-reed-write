@@ -1,6 +1,6 @@
-import { store } from "./store";
-import { setKnittingState } from "./slice";
-import { selectCurrentRow, selectComputedPattern } from "./selectors";
+import { store } from "../store";
+import { setKnittingState } from "./knittingSlice";
+import { selectCurrentRow, selectComputedPattern } from "../selectors";
 
 // Communication protocol constants
 // Commands (host -> device)
@@ -57,7 +57,8 @@ let prevCarriageSide = "left";
 // Subscribe to store changes to send rows when needed
 store.subscribe(() => {
   const state = store.getState();
-  const { patterning, currentRowNumber, carriageSide } = state.knittingState;
+  const { patterning, currentRowNumber, carriageSide } =
+    state.knitting.knittingState;
 
   // Check if we need to send a row
   const patterningJustStarted = patterning && !prevPatterning;
@@ -231,13 +232,13 @@ async function handleRowComplete() {
   processingRowComplete = true;
   try {
     const appState = store.getState();
-    if (appState.knittingState.patterning) {
-      const currentSide = appState.knittingState.carriageSide;
+    if (appState.knitting.knittingState.patterning) {
+      const currentSide = appState.knitting.knittingState.carriageSide;
       // Toggle carriage side: left -> right, right -> left
       const newSide = currentSide === "left" ? "right" : "left";
 
       // Calculate next row number
-      let nextRowNumber = appState.knittingState.currentRowNumber + 1;
+      let nextRowNumber = appState.knitting.knittingState.currentRowNumber + 1;
       const patternHeight = selectComputedPattern(appState).height;
       if (nextRowNumber >= patternHeight) {
         nextRowNumber = 0;
@@ -246,10 +247,10 @@ async function handleRowComplete() {
       // Update carriage side, row number, and increment total rows
       store.dispatch(
         setKnittingState({
-          ...appState.knittingState,
+          ...appState.knitting.knittingState,
           carriageSide: newSide,
           currentRowNumber: nextRowNumber,
-          totalRows: appState.knittingState.totalRows + 1,
+          totalRows: appState.knitting.knittingState.totalRows + 1,
         }),
       );
 
