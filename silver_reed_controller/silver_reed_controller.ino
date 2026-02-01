@@ -1,4 +1,4 @@
-// Pin definitions
+// Pin definitions for the Seeed XIAO RP2040 board
 // const int ND1 = 3;          // (DIN 1) ND1: Needle 1, sets the position of the pattern
 const int CAMS_PIN = 4;        // (DIN 2) KSL: Point Cam. High = in knitting range
 const int OUT_PIN = 28;        // (DIN 3) DOB: Data Out Buffer. Black pixel is off, White pixel is on
@@ -16,11 +16,17 @@ const byte MSG_CHANGE_DIRECTION = 0x05;
 const byte MSG_ERROR = 0x06;
 
 
-// Pattern storage
-const int MAX_PATTERN_LENGTH = 200;
-byte pattern[MAX_PATTERN_LENGTH];
-int patternLength = 0;
+// Pattern storage (packed: 8 needles per byte)
+const int MAX_NEEDLE_COUNT = 200;
+const int MAX_PACKED_BYTES = 25;  // ceil(200/8)
+byte pattern[MAX_PACKED_BYTES];
+int patternLength = 0;  // Actual needle count
 bool patternReady = false;
+
+// Extract a single needle state from packed pattern (LSB first)
+inline bool getNeedle(int index) {
+  return (pattern[index / 8] >> (index % 8)) & 1;
+}
 
 // State variables
 int needleCount = 0;
@@ -111,7 +117,7 @@ void processSerial() {
       
       expectedLength = Serial.read();
       
-      if (expectedLength > MAX_PATTERN_LENGTH) {
+      if (expectedLength > MAX_NEEDLE_COUNT) {
         Serial.println("ERROR: Pattern too long");
         // Flush any available bytes
         while (Serial.available() > 0) {
@@ -135,17 +141,9 @@ void processSerial() {
           return;
         }
         
-        // Read packed bytes and unpack into pattern array
-        byte packedData[26]; // Max 200 needles = 25 bytes, +1 for safety
+        // Read packed bytes directly into pattern array
         for (int i = 0; i < packedLength; i++) {
-          packedData[i] = Serial.read();
-        }
-        
-        // Unpack bits (LSB first: needle 0 = bit 0)
-        for (int i = 0; i < expectedLength; i++) {
-          int byteIndex = i / 8;
-          int bitIndex = i % 8;
-          pattern[i] = (packedData[byteIndex] >> bitIndex) & 1;
+          pattern[i] = Serial.read();
         }
         
         patternLength = expectedLength;
@@ -157,7 +155,7 @@ void processSerial() {
         Serial.print(packedLength);
         Serial.print(" bytes): ");
         for (int i = 0; i < expectedLength; i++) {
-          Serial.print(pattern[i]);
+          Serial.print(getNeedle(i));
         }
         Serial.println();
         
@@ -229,7 +227,7 @@ void loop() {
       risingEdgeSeen = true;
 
       if (needleCount < patternLength) {
-        if (pattern[needleCount] == 1) {
+        if (getNeedle(needleCount)) {
           setOut(HIGH);
         } else {
           setOut(LOW);
