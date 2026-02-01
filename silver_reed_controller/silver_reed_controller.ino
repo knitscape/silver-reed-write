@@ -1,16 +1,20 @@
 // Pin definitions
-// const int ND1 = 3;             // (DIN 1) ND1: Needle 1, sets the position of the pattern
+// const int ND1 = 3;          // (DIN 1) ND1: Needle 1, sets the position of the pattern
 const int CAMS_PIN = 4;        // (DIN 2) KSL: Point Cam. High = in knitting range
 const int OUT_PIN = 28;        // (DIN 3) DOB: Data Out Buffer. Black pixel is off, White pixel is on
 const int CLOCK_PIN = 27;      // (DIN 4) CCP: Carriage Clock Pulse. Output solenoid on rising edge
 const int DIRECTION_PIN = 26;  // (DIN 5) HOK: Carriage Direction. Low = to right, high = to left
 // (DIN 6) 16v: Power the solenoids
-// (DIN 7) 5v: Supplies the logic on the board
+// (DIN 7) 5v: Supplies the logic in the carriage
 // (DIN 8) GND: Ground
 
 // Protocol constants
-const byte CMD_SET_ROW = 0x02;      // Command to set row data (host -> device)
-const byte MSG_ROW_COMPLETE = 0x03; // Message indicating carriage exited CAMS range (device -> host)
+const byte CMD_SET_ROW = 0x02;        // Command to set row data (host -> device)
+const byte MSG_ROW_COMPLETE = 0x03;   // Message indicating carriage exited CAMS range (device -> host)
+const byte MSG_ENTER_CAMS = 0x04;
+const byte MSG_CHANGE_DIRECTION = 0x05;
+const byte MSG_ERROR = 0x06;
+
 
 // Pattern storage
 const int MAX_PATTERN_LENGTH = 200;
@@ -22,11 +26,17 @@ bool patternReady = false;
 int needleCount = 0;
 bool lastClockState = LOW;
 bool lastCamsState = LOW;
-bool lastND1State = LOW;
 bool lastDirectionState = LOW;
 bool risingEdgeSeen = false;
 
-// Safety: track how long OUT solenoidhas been on
+// Serial state machine
+enum SerialState { SERIAL_IDLE, SERIAL_WAITING_LENGTH, SERIAL_WAITING_DATA };
+SerialState serialState = SERIAL_IDLE;
+byte expectedLength = 0;
+unsigned long serialTimeout = 0;
+const unsigned long SERIAL_TIMEOUT_MS = 1000;  // 1 second timeout
+
+// Safety: track how long OUT solenoid has been on
 unsigned long outOnSince = 0;              // millis() when OUT was turned on, 0 if off
 const unsigned long OUT_MAX_ON_MS = 3000;  // Maximum time OUT can stay on (3 seconds)
 
@@ -52,62 +62,114 @@ void checkOutSafety() {
 }
 
 void processSerial() {
-  // Check if data is available
-  if (Serial.available() < 1) {
-    return;
-  }
-
-  // Read the command byte
-  byte cmd = Serial.read();
-  
-  if (cmd == CMD_SET_ROW) {
-    // Wait for length byte
-    while (Serial.available() < 1) {
-      delay(1);
-    }
-    
-    byte length = Serial.read();
-    
-    if (length > MAX_PATTERN_LENGTH) {
-      Serial.println("ERROR: Pattern too long");
-      // Flush remaining bytes
+  // Check for timeout in any waiting state
+  if (serialState != SERIAL_IDLE) {
+    if (millis() - serialTimeout >= SERIAL_TIMEOUT_MS) {
+      Serial.println("ERROR: Serial timeout, resetting state");
+      // Flush stale bytes to prevent desync
+      int flushed = 0;
       while (Serial.available() > 0) {
         Serial.read();
+        flushed++;
       }
+      if (flushed > 0) {
+        Serial.print("Flushed ");
+        Serial.print(flushed);
+        Serial.println(" stale bytes");
+      }
+      serialState = SERIAL_IDLE;
       return;
     }
-    
-    // Wait for all pattern bytes
-    while (Serial.available() < length) {
-      delay(1);
-    }
-    
-    // Read pattern data
-    for (int i = 0; i < length; i++) {
-      pattern[i] = Serial.read();
-    }
-    
-    patternLength = length;
-    patternReady = true;
-    
-    Serial.print("Received pattern, length=");
-    Serial.print(length);
-    Serial.print(": ");
-    for (int i = 0; i < length; i++) {
-      Serial.print(pattern[i]);
-    }
-    Serial.println();
-  } else {
-    // Unknown command, ignore
-    Serial.print("Unknown command: 0x");
-    Serial.println(cmd, HEX);
+  }
+
+  switch (serialState) {
+    case SERIAL_IDLE:
+      // Check if command byte is available
+      if (Serial.available() < 1) {
+        return;
+      }
+      
+      {
+        byte cmd = Serial.read();
+        
+        if (cmd == CMD_SET_ROW) {
+          serialState = SERIAL_WAITING_LENGTH;
+          serialTimeout = millis();
+        } else {
+          // Unknown command, ignore
+          Serial.print("Unknown command: 0x");
+          Serial.println(cmd, HEX);
+        }
+      }
+      break;
+
+    case SERIAL_WAITING_LENGTH:
+      // Check if length byte is available
+      if (Serial.available() < 1) {
+        return;
+      }
+      
+      expectedLength = Serial.read();
+      
+      if (expectedLength > MAX_PATTERN_LENGTH) {
+        Serial.println("ERROR: Pattern too long");
+        // Flush any available bytes
+        while (Serial.available() > 0) {
+          Serial.read();
+        }
+        serialState = SERIAL_IDLE;
+        return;
+      }
+      
+      serialState = SERIAL_WAITING_DATA;
+      serialTimeout = millis();
+      break;
+
+    case SERIAL_WAITING_DATA:
+      {
+        // Calculate packed byte count (8 needles per byte)
+        int packedLength = (expectedLength + 7) / 8;
+        
+        // Check if all packed bytes are available
+        if (Serial.available() < packedLength) {
+          return;
+        }
+        
+        // Read packed bytes and unpack into pattern array
+        byte packedData[26]; // Max 200 needles = 25 bytes, +1 for safety
+        for (int i = 0; i < packedLength; i++) {
+          packedData[i] = Serial.read();
+        }
+        
+        // Unpack bits (LSB first: needle 0 = bit 0)
+        for (int i = 0; i < expectedLength; i++) {
+          int byteIndex = i / 8;
+          int bitIndex = i % 8;
+          pattern[i] = (packedData[byteIndex] >> bitIndex) & 1;
+        }
+        
+        patternLength = expectedLength;
+        patternReady = true;
+        
+        Serial.print("Received pattern, length=");
+        Serial.print(expectedLength);
+        Serial.print(" (");
+        Serial.print(packedLength);
+        Serial.print(" bytes): ");
+        for (int i = 0; i < expectedLength; i++) {
+          Serial.print(pattern[i]);
+        }
+        Serial.println();
+        
+        serialState = SERIAL_IDLE;
+      }
+      break;
   }
 }
 
 void setup() {
   pinMode(CAMS_PIN, INPUT);
   pinMode(CLOCK_PIN, INPUT);
-  // pinMode(ND1, INPUT_PULLUP);
   pinMode(DIRECTION_PIN, INPUT);
   pinMode(OUT_PIN, OUTPUT);
 
@@ -116,7 +178,6 @@ void setup() {
   lastClockState = digitalRead(CLOCK_PIN);
   lastCamsState = digitalRead(CAMS_PIN);
   lastDirectionState = digitalRead(DIRECTION_PIN);
-  // lastND1State = digitalRead(ND1);
 
   Serial.begin(115200);
   Serial.println("Starting Arduino interface with web communication...");
@@ -167,7 +228,6 @@ void loop() {
     if (currentClock == HIGH && lastClockState == LOW) {  // Rising edge
       risingEdgeSeen = true;
 
-      // Use pattern data instead of alternating pattern
       if (needleCount < patternLength) {
         if (pattern[needleCount] == 1) {
           setOut(HIGH);
@@ -175,7 +235,7 @@ void loop() {
           setOut(LOW);
         }
       } else {
-        // Pattern exhausted, turn off
+        // Done with row, turn off solenoid
         setOut(LOW);
       }
 

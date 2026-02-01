@@ -1,6 +1,17 @@
 # silver-reed-write
 
-controller for the silver reed sk840
+A controller and interface for the Silver Reed sk840
+
+# Aruino workflow
+
+Install the [Arduino CLI](https://docs.arduino.cc/arduino-cli/installation/)
+
+Compile and then upload with the Arduino CLI:
+
+```sh
+arduino-cli compile --fqbn rp2040:rp2040:seeed_xiao_rp2040 silver_reed_controller/silver_reed_controller.ino && \
+arduino-cli upload -p /dev/ttyACM0 --fqbn rp2040:rp2040:seeed_xiao_rp2040 silver_reed_controller/silver_reed_controller.ino
+```
 
 ## Helpful Links
 
@@ -20,26 +31,6 @@ controller for the silver reed sk840
 - micropython
   - https://docs.micropython.org/en/latest/rp2/quickref.html
   - https://github.com/orgs/micropython/discussions/11448
-
-## Implementation Notes
-
-The board Control board should:
-
-- signal when a row has ended, and the measured distance between point cams
-- signal when a row has started, and what direction
-- set the DOB to be 0 (off) at the end of each pattern row, as leaving the
-  solenoid on makes it heat up
-- ? Can the pattern row be reversed here, based on whether the direction is left
-  or right?
-
-Web UI should:
-
-- enable someone to select which row of a pattern is knit next
-- send the next pattern row either on select, or when the controller signals the
-  row is done
-- automatically advance to the next row when receiving an end row signal
-- visualize which side the carriage is on and where the point cams should be
-- ? how should we handle mismatch in point cam width?
 
 ## Pins
 
@@ -108,10 +99,7 @@ GPIO_IN_DIRECTION = 4    # (DIN 5) HOK: Carriage Direction. Low = To right, High
 - If you're using VSCode/Cursor, you need to set the language mode to
   `tailwindcss` for the `css` file or else it will complain about the at rules.
 
-
-
-
-
+<!--
 ## micropython workflow
 
 
@@ -147,4 +135,4 @@ Recursively copy the local directory dir to the remote device.
 3. Make some changes
 4. run `mpremote cp -r . :` to copy your entire current working directory onto
    the device
-5. Press reboot (R button)
+5. Press reboot (R button) -->

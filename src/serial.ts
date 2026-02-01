@@ -162,17 +162,25 @@ async function sendRow(pattern: number[]) {
     return;
   }
 
-  const length = pattern.length;
-  if (length > 200) {
+  const needleCount = pattern.length;
+  if (needleCount > 200) {
     console.error("Row too long, max 200");
     return;
   }
 
-  // Build binary message: [CMD_SET_ROW, length, ...pattern]
-  const msg = new Uint8Array(2 + length);
+  // Pack 8 needles per byte (LSB first: needle 0 = bit 0)
+  const packedLength = Math.ceil(needleCount / 8);
+  const msg = new Uint8Array(2 + packedLength);
   msg[0] = CMD_SET_ROW;
-  msg[1] = length;
-  msg.set(pattern, 2);
+  msg[1] = needleCount; // Send actual needle count for unpacking
+
+  for (let i = 0; i < needleCount; i++) {
+    if (pattern[i] === 1) {
+      const byteIndex = Math.floor(i / 8);
+      const bitIndex = i % 8;
+      msg[2 + byteIndex] |= 1 << bitIndex;
+    }
+  }
 
   // Wait for any in-progress write to complete
   while (writeInProgress) {
@@ -231,7 +239,6 @@ export async function writePatternRow(row: number[]) {
     console.error("ERROR: Attempting to send empty row!");
     return;
   }
-  // Make sure we send a copy, not a reference
   await sendRow([...row]);
 }
 
