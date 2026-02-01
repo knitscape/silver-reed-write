@@ -97,6 +97,26 @@ void sendDirection(byte direction) {
   Serial.write(direction);
 }
 
+
+void sendNeedle(byte needleIndex) {
+  Serial.write(MSG_NEEDLE);
+  Serial.write(needleIndex);
+}
+
+void sendAckRow(byte length) {
+  Serial.write(MSG_ACK_ROW);
+  Serial.write(length);
+}
+
+void sendEnterCams() {
+  Serial.write(MSG_ENTER_CAMS);
+}
+
+void sendExitCams() {
+  Serial.write(MSG_EXIT_CAMS);
+}
+
+
 void processSerial() {
   // Check for timeout in any waiting state
   if (serialState != SERIAL_IDLE) {
@@ -109,9 +129,7 @@ void processSerial() {
         flushed++;
       }
       if (flushed > 0) {
-        Serial.print("Flushed ");
-        Serial.print(flushed);
-        Serial.println(" stale bytes");
+        sendInfo("Flushed stale bytes");
       }
       serialState = SERIAL_IDLE;
       return;
@@ -134,7 +152,7 @@ void processSerial() {
         } else if (cmd == CMD_CLEAR_ROW) {
           patternReady = false;
           patternLength = 0;
-          Serial.println("Pattern cleared");
+          sendInfo("Pattern cleared");
         } else {
           // Unknown command, ignore
           sendError("Unknown command");
@@ -182,9 +200,7 @@ void processSerial() {
         patternLength = expectedLength;
         patternReady = true;
         
-        // Acknowledge row received with length
-        Serial.write(MSG_ACK_ROW);
-        Serial.write(expectedLength);
+        sendAckRow(expectedLength);
         
         serialState = SERIAL_IDLE;
       }
@@ -222,7 +238,7 @@ void loop() {
 
   // Check for CAMS rising edge (entering knitting range)
   if (currentCams == HIGH && lastCamsState == LOW) {
-    Serial.write(MSG_ENTER_CAMS);
+    sendEnterCams();
     needleCount = 0;
     
     if (!patternReady) {
@@ -237,10 +253,7 @@ void loop() {
     sendInfo(buf);
     setOut(LOW);
     
-    // Send row complete message to frontend
-    Serial.write(MSG_EXIT_CAMS);
-    
-    // Reset pattern ready flag to wait for next row
+    sendExitCams();
     patternReady = false;
   }
 
@@ -248,8 +261,7 @@ void loop() {
     if (currentClock == HIGH && lastClockState == LOW) {  // Rising edge
       needleCount++;
 
-      Serial.write(MSG_NEEDLE);
-      Serial.write((byte)needleCount);
+      sendNeedle(needleCount);
 
       if (needleCount < patternLength) {
         if (getNeedle(needleCount)) {
