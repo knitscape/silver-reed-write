@@ -12,6 +12,8 @@ const MSG_ACK_ROW = 0x04; // Acknowledge row data received: [MSG, length]
 const MSG_ENTER_CAMS = 0x05; // Carriage entered CAMS range
 const MSG_EXIT_CAMS = 0x06; // Carriage exited CAMS range, row complete
 const MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
+const MSG_ERROR = 0x08; // Error message: [MSG, length, message...]
+const MSG_INFO = 0x09; // Info message: [MSG, length, message...]
 
 // Direction values
 const DIR_RIGHT = 0x00;
@@ -27,6 +29,12 @@ let writeInProgress = false;
 let processingRowComplete = false;
 let expectingAckLength = false; // Next byte is MSG_ACK_ROW length
 let expectingDirection = false; // Next byte is MSG_CHANGE_DIRECTION direction
+let expectingErrorLength = false; // Next byte is MSG_ERROR length
+let errorLength = 0; // Expected error message length
+let errorBuffer = ""; // Accumulated error message bytes
+let expectingInfoLength = false; // Next byte is MSG_INFO length
+let infoLength = 0; // Expected info message length
+let infoBuffer = ""; // Accumulated info message bytes
 
 // Track previous state for detecting changes
 let prevPatterning = false;
@@ -110,6 +118,39 @@ async function startReading() {
             console.log(`[PROTOCOL] Direction changed: ${dirName}`);
             continue;
           }
+          if (expectingErrorLength) {
+            expectingErrorLength = false;
+            errorLength = byte;
+            errorBuffer = "";
+            continue;
+          }
+          if (errorLength > 0) {
+            // Accumulating error message bytes
+            errorBuffer += String.fromCharCode(byte);
+            if (errorBuffer.length >= errorLength) {
+              console.error(`[PROTOCOL] Error from device: ${errorBuffer}`);
+              alert(`Device Error: ${errorBuffer}`);
+              errorLength = 0;
+              errorBuffer = "";
+            }
+            continue;
+          }
+          if (expectingInfoLength) {
+            expectingInfoLength = false;
+            infoLength = byte;
+            infoBuffer = "";
+            continue;
+          }
+          if (infoLength > 0) {
+            // Accumulating info message bytes
+            infoBuffer += String.fromCharCode(byte);
+            if (infoBuffer.length >= infoLength) {
+              console.log(`[DEVICE] ${infoBuffer}`);
+              infoLength = 0;
+              infoBuffer = "";
+            }
+            continue;
+          }
 
           // Check if it's a protocol message
           if (byte === MSG_EXIT_CAMS) {
@@ -125,6 +166,12 @@ async function startReading() {
             expectingDirection = true;
           } else if (byte === MSG_ENTER_CAMS) {
             console.log("[PROTOCOL] Entered CAMS range");
+          } else if (byte === MSG_ERROR) {
+            // Next byte will be error message length
+            expectingErrorLength = true;
+          } else if (byte === MSG_INFO) {
+            // Next byte will be info message length
+            expectingInfoLength = true;
           } else if (byte === CMD_SET_ROW || byte === CMD_CLEAR_ROW) {
             // Shouldn't receive commands from device, but handle gracefully
             console.warn(
@@ -248,6 +295,12 @@ function handleDisconnect() {
   processingRowComplete = false;
   expectingAckLength = false;
   expectingDirection = false;
+  expectingErrorLength = false;
+  errorLength = 0;
+  errorBuffer = "";
+  expectingInfoLength = false;
+  infoLength = 0;
+  infoBuffer = "";
 }
 
 async function disconnect() {

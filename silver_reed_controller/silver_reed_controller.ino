@@ -18,6 +18,8 @@ const byte MSG_ACK_ROW = 0x04;        // Acknowledge row data received: [MSG, le
 const byte MSG_ENTER_CAMS = 0x05;     // Carriage entered CAMS range
 const byte MSG_EXIT_CAMS = 0x06;      // Carriage exited CAMS range, row complete
 const byte MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
+const byte MSG_ERROR = 0x08;          // Error message: [MSG, length, message...]
+const byte MSG_INFO = 0x09;           // Info message: [MSG, length, message...]
 
 // Direction values
 const byte DIR_RIGHT = 0x00;
@@ -69,17 +71,37 @@ void checkOutSafety() {
   if (outOnSince > 0) {
     if (millis() - outOnSince >= OUT_MAX_ON_MS) {
       digitalWrite(OUT_PIN, LOW);
-      Serial.println("SAFETY: Turned OUT off.");
+      sendInfo("SAFETY: Turned OUT off.");
       outOnSince = 0;
     }
   }
+}
+
+void sendError(const char* message) {
+  byte len = strlen(message);
+  Serial.write(MSG_ERROR);
+  Serial.write(len);
+  Serial.write((const uint8_t*)message, len);
+}
+
+void sendInfo(const char* message) {
+  byte len = strlen(message);
+  Serial.write(MSG_INFO);
+  Serial.write(len);
+  Serial.write((const uint8_t*)message, len);
+}
+
+
+void sendDirection(byte direction) {
+  Serial.write(MSG_CHANGE_DIRECTION);
+  Serial.write(direction);
 }
 
 void processSerial() {
   // Check for timeout in any waiting state
   if (serialState != SERIAL_IDLE) {
     if (millis() - serialTimeout >= SERIAL_TIMEOUT_MS) {
-      Serial.println("ERROR: Serial timeout, resetting state");
+      sendError("Serial timeout");
       // Flush stale bytes to prevent desync
       int flushed = 0;
       while (Serial.available() > 0) {
@@ -115,8 +137,7 @@ void processSerial() {
           Serial.println("Pattern cleared");
         } else {
           // Unknown command, ignore
-          Serial.print("Unknown command: 0x");
-          Serial.println(cmd, HEX);
+          sendError("Unknown command");
         }
       }
       break;
@@ -130,7 +151,7 @@ void processSerial() {
       expectedLength = Serial.read();
       
       if (expectedLength > MAX_NEEDLE_COUNT) {
-        Serial.println("ERROR: Pattern too long");
+        sendError("Pattern too long");
         // Flush any available bytes
         while (Serial.available() > 0) {
           Serial.read();
@@ -184,8 +205,8 @@ void setup() {
   lastDirectionState = digitalRead(DIRECTION_PIN);
 
   Serial.begin(115200);
-  Serial.println("Starting Arduino interface with web communication...");
-  Serial.println("Waiting for pattern data...");
+  sendInfo("Starting Arduino interface with web communication...");
+  sendInfo("Waiting for pattern data...");
 }
 
 void loop() {
@@ -197,8 +218,7 @@ void loop() {
   int currentClock = digitalRead(CLOCK_PIN);
 
   if (currentDirection != lastDirectionState) {
-    Serial.write(MSG_CHANGE_DIRECTION);
-    Serial.write(currentDirection == HIGH ? DIR_LEFT : DIR_RIGHT);
+    sendDirection(currentDirection == HIGH ? DIR_LEFT : DIR_RIGHT);
   }
 
   // Check for CAMS rising edge (entering knitting range)
@@ -208,15 +228,15 @@ void loop() {
     risingEdgeSeen = false;
     
     if (!patternReady) {
-      Serial.println("WARNING: No pattern ready, skipping row");
+      sendError("No pattern ready");
     }
   }
 
   // Check for CAMS falling edge (exiting knitting range)
   if (currentCams == LOW && lastCamsState == HIGH) {
-    Serial.print("Finished row, saw ");
-    Serial.print(needleCount);
-    Serial.println(" needles");
+    char buf[40];
+    snprintf(buf, sizeof(buf), "Finished row, saw %d needles", needleCount);
+    sendInfo(buf);
     setOut(LOW);
     
     // Send row complete message to frontend
