@@ -14,6 +14,7 @@ const MSG_EXIT_CAMS = 0x06; // Carriage exited CAMS range, row complete
 const MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
 const MSG_ERROR = 0x08; // Error message: [MSG, length, message...]
 const MSG_INFO = 0x09; // Info message: [MSG, length, message...]
+const MSG_NEEDLE = 0x0a; // Needle detected: [MSG, needle_index]
 
 // Direction values
 const DIR_RIGHT = 0x00;
@@ -35,6 +36,7 @@ let errorBuffer = ""; // Accumulated error message bytes
 let expectingInfoLength = false; // Next byte is MSG_INFO length
 let infoLength = 0; // Expected info message length
 let infoBuffer = ""; // Accumulated info message bytes
+let expectingNeedleIndex = false; // Next byte is MSG_NEEDLE index
 
 // Track previous state for detecting changes
 let prevPatterning = false;
@@ -151,6 +153,11 @@ async function startReading() {
             }
             continue;
           }
+          if (expectingNeedleIndex) {
+            expectingNeedleIndex = false;
+            console.log(`[PROTOCOL] Needle: ${byte}`);
+            continue;
+          }
 
           // Check if it's a protocol message
           if (byte === MSG_EXIT_CAMS) {
@@ -172,6 +179,9 @@ async function startReading() {
           } else if (byte === MSG_INFO) {
             // Next byte will be info message length
             expectingInfoLength = true;
+          } else if (byte === MSG_NEEDLE) {
+            // Next byte will be needle index
+            expectingNeedleIndex = true;
           } else if (byte === CMD_SET_ROW || byte === CMD_CLEAR_ROW) {
             // Shouldn't receive commands from device, but handle gracefully
             console.warn(
@@ -301,6 +311,7 @@ function handleDisconnect() {
   expectingInfoLength = false;
   infoLength = 0;
   infoBuffer = "";
+  expectingNeedleIndex = false;
 }
 
 async function disconnect() {

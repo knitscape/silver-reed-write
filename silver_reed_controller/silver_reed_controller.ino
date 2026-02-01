@@ -20,6 +20,7 @@ const byte MSG_EXIT_CAMS = 0x06;      // Carriage exited CAMS range, row complet
 const byte MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
 const byte MSG_ERROR = 0x08;          // Error message: [MSG, length, message...]
 const byte MSG_INFO = 0x09;           // Info message: [MSG, length, message...]
+const byte MSG_NEEDLE = 0x0A;         // Needle detected: [MSG, needle_index]
 
 // Direction values
 const byte DIR_RIGHT = 0x00;
@@ -43,7 +44,6 @@ int needleCount = 0;
 bool lastClockState = LOW;
 bool lastCamsState = LOW;
 bool lastDirectionState = LOW;
-bool risingEdgeSeen = false;
 
 // Serial state machine
 enum SerialState { SERIAL_IDLE, SERIAL_WAITING_LENGTH, SERIAL_WAITING_DATA };
@@ -210,7 +210,6 @@ void setup() {
 }
 
 void loop() {
-  // Process incoming serial data
   processSerial();
   
   int currentCams = digitalRead(CAMS_PIN);
@@ -225,7 +224,6 @@ void loop() {
   if (currentCams == HIGH && lastCamsState == LOW) {
     Serial.write(MSG_ENTER_CAMS);
     needleCount = 0;
-    risingEdgeSeen = false;
     
     if (!patternReady) {
       sendError("No pattern ready");
@@ -248,7 +246,10 @@ void loop() {
 
   if (currentCams == HIGH && patternReady) {  // Only process when in CAMS range and pattern is ready
     if (currentClock == HIGH && lastClockState == LOW) {  // Rising edge
-      risingEdgeSeen = true;
+      needleCount++;
+
+      Serial.write(MSG_NEEDLE);
+      Serial.write((byte)needleCount);
 
       if (needleCount < patternLength) {
         if (getNeedle(needleCount)) {
@@ -261,11 +262,6 @@ void loop() {
         setOut(LOW);
       }
 
-    } else if (currentClock == LOW && lastClockState == HIGH) {  // Falling edge
-      // Increment needle count if we've already seen the rising edge
-      if (risingEdgeSeen) {
-        needleCount++;
-      }
     }
   }
 
