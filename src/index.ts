@@ -13,7 +13,6 @@ import {
   setTool,
   setFairisleMode,
   setFairisleRowColor,
-  syncFairisleColors,
   setShowFairisleColors,
   swapFairisleYarns,
 } from "./slice";
@@ -270,7 +269,7 @@ function getFairisleYarnPalette() {
           <div
             class="group relative w-[30px] h-[30px] rounded-sm shadow-sm cursor-pointer ${index ===
             selectedFairisleYarnIndex
-              ? "border-2 border-white outline outline-2 outline-black"
+              ? "border-2 border-white outline-2 outline-black"
               : ""}"
             style="background-color: rgb(${yarn.color[0]}, ${yarn
               .color[1]}, ${yarn.color[2]})"
@@ -1097,7 +1096,7 @@ function patternDesign() {
             html`<div
               class="w-[30px] h-[30px] rounded-sm shadow-sm cursor-pointer ${index ===
               paletteIndex
-                ? "border-2 border-white outline outline-2 outline-black"
+                ? "border-2 border-white outline-2 outline-black"
                 : ""}"
               style="background-color: rgb(${color[0]}, ${color[1]}, ${color[2]})"
               @click=${() => store.dispatch(setPaletteIndex(index))}></div>`,

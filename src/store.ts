@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import reducer, { initialState, GlobalState } from "./slice";
-import { writePatternRow, serial } from "./serial";
+import { writePatternRow } from "./serial";
 import { drawPreviewPattern, drawComputedPattern } from "./drawing";
 import { selectComputedPattern, selectCurrentRow } from "./selectors";
 
@@ -64,15 +64,13 @@ function redrawPatterns(state: GlobalState) {
     selectComputedPattern(state),
     fairisleColors,
     state.patternConfig,
-    state.basePattern.height
+    state.basePattern.height,
   );
 }
 
 const afterReducerMiddleware = (store) => (next) => async (action) => {
   // Run the reducer
   const result = next(action);
-
-  // Get the new state
   const newState = store.getState();
 
   // After the reducer runs, do things based on the action type
