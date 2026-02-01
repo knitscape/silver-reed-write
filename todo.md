@@ -1,0 +1,36 @@
+## Todo
+
+- Core features
+  - [ ] notify on disconnect
+  - [x] set which side the carriage is on
+  - [ ] take extents from uploaded pattern
+  - [ ] autoscroll with pattern progression
+- Workspace
+  - [ ] save state to browser storage
+  - [ ] Make a pattern library
+- Micropython/webserial
+  - [x] Connect and disconnect to microcontroller via webserial
+  - [x] Can send/receive messages to/from microcontroller over webserial
+  - [x] Microcontroller can control machine patterning from a pattern row
+  - [x] Microcontroller reports that it has finished a row (and what side it is
+        on)
+- Interactive Knitting
+  - [x] Visualize pattern being sent to microcontroller and highlight next row
+  - [x] Send next row on connect and on finishing a row
+  - [x] reverse pattern row depending on carriage side
+  - [x] Select which row to send next in web interface
+  - [ ] Notify if point cams are not in the right place
+- Pattern config
+  - [x] upload patterns (BMP, PNG, JPG)
+  - [x] mirroring
+  - [x] doubling rows/cols
+  - [x] horizontal/vertical repeat
+  - [x] end needle selection
+  - [x] center repeat
+  - [x] margin
+  - [ ] small preview
+  - [ ] save preview image
+- Pattern design (black and white)
+  - [x] pixel art editor
+  - [x] resize pattern extents
+  - [x] save pattern
