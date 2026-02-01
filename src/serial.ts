@@ -39,7 +39,6 @@ let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 let reading = false;
 let readBuffer = new Uint8Array(0);
-let textBuffer = ""; // Buffer for accumulating text from Serial.println()
 let writeInProgress = false;
 let processingRowComplete = false;
 
@@ -70,7 +69,7 @@ store.subscribe(() => {
     // Send the current row to the device
     const row = selectCurrentRow(state);
     if (row.length > 0 && port) {
-      console.log(
+      console.debug(
         `Sending row ${currentRowNumber} (side: ${carriageSide}):`,
         row,
       );
@@ -119,12 +118,18 @@ async function startReading() {
 
           switch (receiveState) {
             case ReceiveState.WAITING_ACK_LENGTH:
-              console.log(`[PROTOCOL] Row acknowledged by device, length=${byte}`);
+              console.log(
+                `[CONTROLLER] Row acknowledged by device, length=${byte}`,
+              );
               receiveState = ReceiveState.IDLE;
               continue;
 
             case ReceiveState.WAITING_DIRECTION:
-              console.log(`[PROTOCOL] Direction changed: ${byte === DIR_LEFT ? "LEFT" : "RIGHT"}`);
+              console.log(
+                `[CONTROLLER] Direction changed: ${
+                  byte === DIR_LEFT ? "LEFT" : "RIGHT"
+                }`,
+              );
               receiveState = ReceiveState.IDLE;
               continue;
 
@@ -153,7 +158,7 @@ async function startReading() {
               continue;
 
             case ReceiveState.WAITING_NEEDLE_INDEX:
-              console.log(`[PROTOCOL] Needle: ${byte}`);
+              console.log(`[CONTROLLER] Needle: ${byte}`);
               receiveState = ReceiveState.IDLE;
               continue;
 
@@ -172,7 +177,7 @@ async function startReading() {
                   receiveState = ReceiveState.WAITING_DIRECTION;
                   break;
                 case MSG_ENTER_CAMS:
-                  console.log("[PROTOCOL] Entered CAMS range");
+                  console.log("[CONTROLLER] Entered CAMS range");
                   break;
                 case MSG_STRING:
                   receiveState = ReceiveState.WAITING_STRING_TYPE;
@@ -182,18 +187,15 @@ async function startReading() {
                   break;
                 case CMD_SET_ROW:
                 case CMD_CLEAR_ROW:
-                  console.warn(`Received command 0x${byte.toString(16)} from device (unexpected)`);
+                  console.warn(
+                    `Received command 0x${byte.toString(
+                      16,
+                    )} from device (unexpected)`,
+                  );
                   break;
                 default:
-                  // Treat as text character
-                  if (byte === 0x0a || byte === 0x0d) {
-                    if (textBuffer.length > 0) {
-                      console.log(`[ARDUINO] ${textBuffer}`);
-                      textBuffer = "";
-                    }
-                  } else if (byte >= 0x20 && byte <= 0x7e) {
-                    textBuffer += String.fromCharCode(byte);
-                  }
+                  // Unexpected byte - protocol error
+                  console.warn(`Unexpected byte: 0x${byte.toString(16)}`);
                   break;
               }
               break;
@@ -295,7 +297,6 @@ function handleDisconnect() {
   writer = null;
   port = null;
   readBuffer = new Uint8Array(0);
-  textBuffer = "";
   writeInProgress = false;
   processingRowComplete = false;
   receiveState = ReceiveState.IDLE;
