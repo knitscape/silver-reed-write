@@ -2,9 +2,20 @@ import { store } from "./store";
 import { setKnittingState } from "./slice";
 import { selectCurrentRow, selectComputedPattern } from "./selectors";
 
-// Binary protocol constants
-const CMD_SET_ROW = 0x02; // Command to set row data (host -> device)
-const MSG_ROW_COMPLETE = 0x03; // Message indicating carriage exited CAMS range (device -> host)
+// Communication protocol constants
+// Commands (host -> device)
+const CMD_SET_ROW = 0x02; // Set row data: [CMD, length, packed_data...]
+const CMD_CLEAR_ROW = 0x03; // Clear current row pattern
+
+// Messages (device -> host)
+const MSG_ACK_ROW = 0x04; // Acknowledge row data received: [MSG, length]
+const MSG_ENTER_CAMS = 0x05; // Carriage entered CAMS range
+const MSG_EXIT_CAMS = 0x06; // Carriage exited CAMS range, row complete
+const MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
+
+// Direction values
+const DIR_RIGHT = 0x00;
+const DIR_LEFT = 0x01;
 
 let port: any = null;
 let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -14,6 +25,8 @@ let readBuffer = new Uint8Array(0);
 let textBuffer = ""; // Buffer for accumulating text from Serial.println()
 let writeInProgress = false;
 let processingRowComplete = false;
+let expectingAckLength = false; // Next byte is MSG_ACK_ROW length
+let expectingDirection = false; // Next byte is MSG_CHANGE_DIRECTION direction
 
 // Track previous state for detecting changes
 let prevPatterning = false;
@@ -83,15 +96,42 @@ async function startReading() {
         for (let i = 0; i < value.length; i++) {
           const byte = value[i];
 
+          // Check if we're expecting a data byte from a previous message
+          if (expectingAckLength) {
+            expectingAckLength = false;
+            console.log(
+              `[PROTOCOL] Row acknowledged by device, length=${byte}`,
+            );
+            continue;
+          }
+          if (expectingDirection) {
+            expectingDirection = false;
+            const dirName = byte === DIR_LEFT ? "LEFT" : "RIGHT";
+            console.log(`[PROTOCOL] Direction changed: ${dirName}`);
+            continue;
+          }
+
           // Check if it's a protocol message
-          if (byte === MSG_ROW_COMPLETE) {
+          if (byte === MSG_EXIT_CAMS) {
             // Row complete message (1 byte)
             if (!processingRowComplete) {
               handleRowComplete();
             }
-          } else if (byte === CMD_SET_ROW) {
-            // Shouldn't receive this from device, but handle gracefully
-            console.warn("Received CMD_SET_ROW from device (unexpected)");
+          } else if (byte === MSG_ACK_ROW) {
+            // Next byte will be the pattern length
+            expectingAckLength = true;
+          } else if (byte === MSG_CHANGE_DIRECTION) {
+            // Next byte will be the direction
+            expectingDirection = true;
+          } else if (byte === MSG_ENTER_CAMS) {
+            console.log("[PROTOCOL] Entered CAMS range");
+          } else if (byte === CMD_SET_ROW || byte === CMD_CLEAR_ROW) {
+            // Shouldn't receive commands from device, but handle gracefully
+            console.warn(
+              `Received command 0x${byte.toString(
+                16,
+              )} from device (unexpected)`,
+            );
           } else {
             // Treat as text character
             if (byte === 0x0a || byte === 0x0d) {
@@ -206,6 +246,8 @@ function handleDisconnect() {
   textBuffer = "";
   writeInProgress = false;
   processingRowComplete = false;
+  expectingAckLength = false;
+  expectingDirection = false;
 }
 
 async function disconnect() {

@@ -9,11 +9,19 @@ const int DIRECTION_PIN = 26;  // (DIN 5) HOK: Carriage Direction. Low = to righ
 // (DIN 8) GND: Ground
 
 // Protocol constants
-const byte CMD_SET_ROW = 0x02;        // Command to set row data (host -> device)
-const byte MSG_ROW_COMPLETE = 0x03;   // Message indicating carriage exited CAMS range (device -> host)
-const byte MSG_ENTER_CAMS = 0x04;
-const byte MSG_CHANGE_DIRECTION = 0x05;
-const byte MSG_ERROR = 0x06;
+// Commands (host -> device)
+const byte CMD_SET_ROW = 0x02;        // Set row data: [CMD, length, packed_data...]
+const byte CMD_CLEAR_ROW = 0x03;      // Clear current row pattern
+
+// Messages (device -> host)
+const byte MSG_ACK_ROW = 0x04;        // Acknowledge row data received: [MSG, length]
+const byte MSG_ENTER_CAMS = 0x05;     // Carriage entered CAMS range
+const byte MSG_EXIT_CAMS = 0x06;      // Carriage exited CAMS range, row complete
+const byte MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
+
+// Direction values
+const byte DIR_RIGHT = 0x00;
+const byte DIR_LEFT = 0x01;
 
 
 // Pattern storage (packed: 8 needles per byte)
@@ -101,6 +109,10 @@ void processSerial() {
         if (cmd == CMD_SET_ROW) {
           serialState = SERIAL_WAITING_LENGTH;
           serialTimeout = millis();
+        } else if (cmd == CMD_CLEAR_ROW) {
+          patternReady = false;
+          patternLength = 0;
+          Serial.println("Pattern cleared");
         } else {
           // Unknown command, ignore
           Serial.print("Unknown command: 0x");
@@ -141,7 +153,7 @@ void processSerial() {
           return;
         }
         
-        // Read packed bytes directly into pattern array
+        // Read packed bytes into pattern array
         for (int i = 0; i < packedLength; i++) {
           pattern[i] = Serial.read();
         }
@@ -149,15 +161,9 @@ void processSerial() {
         patternLength = expectedLength;
         patternReady = true;
         
-        Serial.print("Received pattern, length=");
-        Serial.print(expectedLength);
-        Serial.print(" (");
-        Serial.print(packedLength);
-        Serial.print(" bytes): ");
-        for (int i = 0; i < expectedLength; i++) {
-          Serial.print(getNeedle(i));
-        }
-        Serial.println();
+        // Acknowledge row received with length
+        Serial.write(MSG_ACK_ROW);
+        Serial.write(expectedLength);
         
         serialState = SERIAL_IDLE;
       }
@@ -190,16 +196,14 @@ void loop() {
   int currentDirection = digitalRead(DIRECTION_PIN);
   int currentClock = digitalRead(CLOCK_PIN);
 
-  if (currentDirection == HIGH && lastDirectionState == LOW) {
-    Serial.println("Moving LEFT");
-  }
-
-  if (currentDirection == LOW && lastDirectionState == HIGH) {
-    Serial.println("Moving RIGHT");
+  if (currentDirection != lastDirectionState) {
+    Serial.write(MSG_CHANGE_DIRECTION);
+    Serial.write(currentDirection == HIGH ? DIR_LEFT : DIR_RIGHT);
   }
 
   // Check for CAMS rising edge (entering knitting range)
   if (currentCams == HIGH && lastCamsState == LOW) {
+    Serial.write(MSG_ENTER_CAMS);
     needleCount = 0;
     risingEdgeSeen = false;
     
@@ -216,7 +220,7 @@ void loop() {
     setOut(LOW);
     
     // Send row complete message to frontend
-    Serial.write(MSG_ROW_COMPLETE);
+    Serial.write(MSG_EXIT_CAMS);
     
     // Reset pattern ready flag to wait for next row
     patternReady = false;
