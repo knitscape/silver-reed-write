@@ -32,6 +32,7 @@ enum ReceiveState {
   WAITING_STRING_LENGTH,
   WAITING_STRING_DATA,
   WAITING_NEEDLE_INDEX,
+  WAITING_EXIT_CAMS_COUNT,
 }
 
 let port: any = null;
@@ -162,13 +163,23 @@ async function startReading() {
               receiveState = ReceiveState.IDLE;
               continue;
 
+            case ReceiveState.WAITING_EXIT_CAMS_COUNT:
+              const lastNeedleCount = byte;
+              console.log(
+                `[CONTROLLER] Exited CAMS range, needle count: ${lastNeedleCount}`,
+              );
+
+              if (!processingRowComplete) {
+                handleRowComplete();
+              }
+              receiveState = ReceiveState.IDLE;
+              continue;
+
             case ReceiveState.IDLE:
               // Handle message type detection
               switch (byte) {
                 case MSG_EXIT_CAMS:
-                  if (!processingRowComplete) {
-                    handleRowComplete();
-                  }
+                  receiveState = ReceiveState.WAITING_EXIT_CAMS_COUNT;
                   break;
                 case MSG_ACK_ROW:
                   receiveState = ReceiveState.WAITING_ACK_LENGTH;

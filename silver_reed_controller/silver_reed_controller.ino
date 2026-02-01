@@ -16,7 +16,7 @@ const byte CMD_CLEAR_ROW = 0x03;      // Clear current row pattern
 // Messages (device -> host)
 const byte MSG_ACK_ROW = 0x04;        // Acknowledge row data received: [MSG, length]
 const byte MSG_ENTER_CAMS = 0x05;     // Carriage entered CAMS range
-const byte MSG_EXIT_CAMS = 0x06;      // Carriage exited CAMS range, row complete
+const byte MSG_EXIT_CAMS = 0x06;      // Carriage exited CAMS range, row complete: [MSG, needle_count]
 const byte MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
 const byte MSG_STRING = 0x08;         // String message: [MSG, type, length, message...]
 const byte MSG_NEEDLE = 0x09;         // Needle detected: [MSG, needle_index]
@@ -117,8 +117,9 @@ void sendEnterCams() {
   Serial.write(MSG_ENTER_CAMS);
 }
 
-void sendExitCams() {
+void sendExitCams(byte needleCount) {
   Serial.write(MSG_EXIT_CAMS);
+  Serial.write(needleCount);
 }
 
 
@@ -253,12 +254,8 @@ void loop() {
 
   // Check for CAMS falling edge (exiting knitting range)
   if (currentCams == LOW && lastCamsState == HIGH) {
-    char buf[40];
-    snprintf(buf, sizeof(buf), "Finished row, saw %d needles", needleCount);
-    sendInfo(buf);
+    sendExitCams(needleCount);
     setOut(LOW);
-    
-    sendExitCams();
     patternReady = false;
   }
 
