@@ -1,7 +1,10 @@
-import { createEmptyBitmap, paletteIndexAt } from "./utils/bitmap";
+import { createEmptyBitmap, paletteIndexAt } from "./common/bitmap";
 
-import { Bitmap } from "./utils/bitmap";
-import { KnittingState, PatternConfig } from "./types";
+import { Bitmap } from "./common/bitmap";
+import {
+  KnittingState,
+  PatternConfig,
+} from "./interactive-knitting/knittingSlice";
 
 export function computePattern(
   basePattern: Bitmap,

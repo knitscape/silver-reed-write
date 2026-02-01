@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { GlobalState } from "./slice";
 import { computePattern } from "./pattern";
-import { getRow } from "./utils/bitmap";
+import { getRow } from "./common/bitmap";
 
 // Base selectors (new state shape: state.design, state.knitting, state.app)
 const selectBasePattern = (state: GlobalState) => state.design.basePattern;

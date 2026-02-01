@@ -1,7 +1,12 @@
-import { YarnLibraryEntry } from "./types";
-import { RGBColor } from "./utils/bitmap";
+import { ColorRGB } from "./common/color";
 
 const YARN_LIBRARY_KEY = "silver-reed-write-yarn-library";
+
+export type YarnLibraryEntry = {
+  id: string;
+  name: string;
+  color: ColorRGB;
+};
 
 let yarnLibrary: YarnLibraryEntry[] = [];
 let listeners: (() => void)[] = [];
@@ -42,7 +47,7 @@ export function getYarnLibrary(): YarnLibraryEntry[] {
 }
 
 // Add a new yarn to the library
-export function addYarn(name: string, color: RGBColor): YarnLibraryEntry {
+export function addYarn(name: string, color: ColorRGB): YarnLibraryEntry {
   const id = `yarn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const newYarn: YarnLibraryEntry = { id, name, color };
   yarnLibrary.push(newYarn);
@@ -64,7 +69,7 @@ export function removeYarn(id: string): boolean {
 }
 
 // Update a yarn in the library
-export function updateYarn(id: string, name: string, color: RGBColor): boolean {
+export function updateYarn(id: string, name: string, color: ColorRGB): boolean {
   const yarn = yarnLibrary.find((y) => y.id === id);
   if (yarn) {
     yarn.name = name;
@@ -82,7 +87,7 @@ export function findYarnById(id: string): YarnLibraryEntry | undefined {
 }
 
 // Find a yarn by color (exact match)
-export function findYarnByColor(color: RGBColor): YarnLibraryEntry | undefined {
+export function findYarnByColor(color: ColorRGB): YarnLibraryEntry | undefined {
   return getYarnLibrary().find(
     (y) =>
       y.color[0] === color[0] &&

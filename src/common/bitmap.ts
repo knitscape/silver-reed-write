@@ -1,5 +1,6 @@
-export type RGBColor = [number, number, number];
-export type Palette = RGBColor[];
+import { ColorRGB } from "./color";
+
+export type Palette = ColorRGB[];
 export type Position = [number, number];
 
 export interface Bitmap {
@@ -16,8 +17,8 @@ export function getRow(bitmap: Bitmap, row: number) {
 export function createEmptyBitmap(
   width: number,
   height: number,
-  color: RGBColor = [0, 0, 0],
-  palette: Palette = [color]
+  color: ColorRGB = [0, 0, 0],
+  palette: Palette = [color],
 ) {
   return {
     width,
@@ -82,7 +83,7 @@ function rect(
   bitmap: Bitmap,
   [x0, y0]: Position,
   [x1, y1]: Position,
-  paletteIndex: number
+  paletteIndex: number,
 ) {
   let xStart = Math.min(x0, x1);
   let yStart = Math.min(y0, y1);
@@ -102,7 +103,7 @@ function line(
   bitmap: Bitmap,
   [x0, y0]: Position,
   [x1, y1]: Position,
-  paletteIndex: number
+  paletteIndex: number,
 ) {
   const changes: [number, number, number][] = [];
   if (Math.abs(x0 - x1) > Math.abs(y0 - y1)) {
@@ -190,12 +191,13 @@ const SUPPORTED_FORMATS = [
   "image/gif",
   "image/webp",
 ];
+
 export async function createBitmapFromImage(file: File): Promise<Bitmap> {
   if (!SUPPORTED_FORMATS.includes(file.type)) {
     throw new Error(
       `Unsupported image format: ${
         file.type
-      }. Supported formats are: ${SUPPORTED_FORMATS.join(", ")}`
+      }. Supported formats are: ${SUPPORTED_FORMATS.join(", ")}`,
     );
   }
 
@@ -298,4 +300,42 @@ export function bitmapToPNGDataURL(bitmap: Bitmap): string {
 
   // Convert to data URL
   return canvas.toDataURL("image/png");
+}
+
+export function getCurrentCellSize(rect: DOMRect, bitmap: Bitmap) {
+  return rect.width / bitmap.width;
+}
+
+export function getCellFromEvent(
+  e: PointerEvent,
+  bitmap: Bitmap,
+): [number, number] {
+  const canvas = document.getElementById("preview-canvas") as HTMLCanvasElement;
+  const rect = canvas.getBoundingClientRect();
+  const cellWidth = rect.width / bitmap.width;
+  const cellHeight = rect.height / bitmap.height;
+
+  const point = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  };
+
+  let x = Math.floor(point.x / cellWidth);
+  let y = Math.floor(point.y / cellHeight);
+
+  if (x < 0) {
+    x = 0;
+  }
+  if (y < 0) {
+    y = 0;
+  }
+
+  if (x >= bitmap.width) {
+    x = bitmap.width - 1;
+  }
+
+  if (y >= bitmap.height) {
+    y = bitmap.height - 1;
+  }
+  return [x, y];
 }

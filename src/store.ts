@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import rootReducer, { GlobalState } from "./slice";
-import { writePatternRow } from "./interactive-knitting/serial";
+import { initSerial, writePatternRow } from "./interactive-knitting/serial";
 import { drawDesignPattern } from "./pattern-design/drawDesign";
 import { drawComputedPattern } from "./interactive-knitting/drawComputed";
 import { selectComputedPattern, selectCurrentRow } from "./selectors";
@@ -116,3 +116,5 @@ export const store = configureStore({
 store.subscribe(() => {
   saveState(store.getState());
 });
+
+initSerial(store);

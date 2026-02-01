@@ -1,10 +1,11 @@
-import { Bitmap } from "../utils/bitmap";
+import { Bitmap } from "../common/bitmap";
 import {
   createRowMapper,
   drawBitmapWithFairisleColors,
   drawBitmapToCanvas,
 } from "../drawing";
-import { FairisleRowColors, PatternConfig } from "../types";
+import { PatternConfig } from "../interactive-knitting/knittingSlice";
+import { FairisleRowColors } from "../common/color";
 
 export function drawComputedPattern(
   computedPattern: Bitmap,

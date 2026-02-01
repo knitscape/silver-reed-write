@@ -1,6 +1,9 @@
-import { store } from "../store";
+import type { Store } from "@reduxjs/toolkit";
+import type { GlobalState } from "../slice";
 import { setKnittingState } from "./knittingSlice";
 import { selectCurrentRow, selectComputedPattern } from "../selectors";
+
+let storeRef: Store<GlobalState> | null = null;
 
 // Communication protocol constants
 // Commands (host -> device)
@@ -54,36 +57,38 @@ let prevPatterning = false;
 let prevCurrentRowNumber = 0;
 let prevCarriageSide = "left";
 
-// Subscribe to store changes to send rows when needed
-store.subscribe(() => {
-  const state = store.getState();
-  const { patterning, currentRowNumber, carriageSide } =
-    state.knitting.knittingState;
+export function initSerial(store: Store<GlobalState>) {
+  storeRef = store;
+  store.subscribe(() => {
+    const state = store.getState();
+    const { patterning, currentRowNumber, carriageSide } =
+      state.knitting.knittingState;
 
-  // Check if we need to send a row
-  const patterningJustStarted = patterning && !prevPatterning;
-  const rowOrSideChanged =
-    patterning &&
-    (currentRowNumber !== prevCurrentRowNumber ||
-      carriageSide !== prevCarriageSide);
+    // Check if we need to send a row
+    const patterningJustStarted = patterning && !prevPatterning;
+    const rowOrSideChanged =
+      patterning &&
+      (currentRowNumber !== prevCurrentRowNumber ||
+        carriageSide !== prevCarriageSide);
 
-  if (patterningJustStarted || rowOrSideChanged) {
-    // Send the current row to the device
-    const row = selectCurrentRow(state);
-    if (row.length > 0 && port) {
-      console.debug(
-        `Sending row ${currentRowNumber} (side: ${carriageSide}):`,
-        row,
-      );
-      writePatternRow(row);
+    if (patterningJustStarted || rowOrSideChanged) {
+      // Send the current row to the device
+      const row = selectCurrentRow(state);
+      if (row.length > 0 && port) {
+        console.debug(
+          `Sending row ${currentRowNumber} (side: ${carriageSide}):`,
+          row,
+        );
+        writePatternRow(row);
+      }
     }
-  }
 
-  // Update previous state
-  prevPatterning = patterning;
-  prevCurrentRowNumber = currentRowNumber;
-  prevCarriageSide = carriageSide;
-});
+    // Update previous state
+    prevPatterning = patterning;
+    prevCurrentRowNumber = currentRowNumber;
+    prevCarriageSide = carriageSide;
+  });
+}
 
 async function connect() {
   try {
@@ -231,7 +236,8 @@ async function handleRowComplete() {
 
   processingRowComplete = true;
   try {
-    const appState = store.getState();
+    if (!storeRef) return;
+    const appState = storeRef.getState();
     if (appState.knitting.knittingState.patterning) {
       const currentSide = appState.knitting.knittingState.carriageSide;
       // Toggle carriage side: left -> right, right -> left
@@ -245,7 +251,7 @@ async function handleRowComplete() {
       }
 
       // Update carriage side, row number, and increment total rows
-      store.dispatch(
+      storeRef.dispatch(
         setKnittingState({
           ...appState.knitting.knittingState,
           carriageSide: newSide,

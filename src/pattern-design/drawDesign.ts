@@ -1,5 +1,5 @@
-import { Bitmap } from "../utils/bitmap";
-import { FairisleRowColors } from "../types";
+import { Bitmap } from "../common/bitmap";
+import { FairisleRowColors } from "../common/color";
 import { fitCanvasToParent } from "../drawing";
 import { drawBitmapWithFairisleColors, drawBitmapToCanvas } from "../drawing";
 

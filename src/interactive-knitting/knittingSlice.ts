@@ -1,5 +1,28 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { PatternConfig, KnittingState } from "../types";
+
+export type PatternConfig = {
+  double_cols: boolean;
+  double_rows: boolean;
+  negative: boolean;
+  mirror_vertical: boolean;
+  mirror_horizontal: boolean;
+  repeat_horizontal: boolean;
+  repeat_vertical: boolean;
+  alignment: "left" | "center" | "right";
+  endNeedleSelection: boolean; // knit contrast yarn on the end needles
+  marginLeft: number;
+  marginRight: number;
+  height: number;
+  heightFromTile: boolean; // If true, use the base tile height (after doubling/mirroring)
+};
+
+export type KnittingState = {
+  pointCams: [number, number];
+  carriageSide: "left" | "right";
+  patterning: boolean; // If interactive patterning is active
+  currentRowNumber: number; // Current row number in the pattern
+  totalRows: number; // Total row counter
+};
 
 export const initialKnittingState = {
   patternConfig: {

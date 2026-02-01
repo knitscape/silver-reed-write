@@ -1,5 +1,6 @@
-import { Bitmap } from "./utils/bitmap";
-import { FairisleRowColors, PatternConfig } from "./types";
+import { Bitmap } from "./common/bitmap";
+import { PatternConfig } from "./interactive-knitting/knittingSlice";
+import { FairisleRowColors } from "./common/color";
 
 export function drawBitmapToCanvas(
   canvasElement: HTMLCanvasElement,

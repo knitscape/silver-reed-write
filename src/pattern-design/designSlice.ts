@@ -1,6 +1,15 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { Bitmap, createEmptyBitmap } from "../utils/bitmap";
-import { DesignState, FairisleRowColors } from "../types";
+import { Bitmap, createEmptyBitmap } from "../common/bitmap";
+import { FairisleRowColors } from "../common/color";
+
+export type DesignState = {
+  selectedPaletteIndex: number;
+  selectedTool: "brush" | "flood" | "rect" | "line" | "shift";
+  mousePos: [number, number] | null;
+  fairisleMode: boolean;
+  fairisleColors: FairisleRowColors[]; // One entry per base pattern row
+  showFairisleColors: boolean; // Whether to display yarn colors or black/white
+};
 
 export const initialDesignState = {
   basePattern: {
