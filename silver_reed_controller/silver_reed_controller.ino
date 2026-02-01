@@ -18,13 +18,16 @@ const byte MSG_ACK_ROW = 0x04;        // Acknowledge row data received: [MSG, le
 const byte MSG_ENTER_CAMS = 0x05;     // Carriage entered CAMS range
 const byte MSG_EXIT_CAMS = 0x06;      // Carriage exited CAMS range, row complete
 const byte MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
-const byte MSG_ERROR = 0x08;          // Error message: [MSG, length, message...]
-const byte MSG_INFO = 0x09;           // Info message: [MSG, length, message...]
-const byte MSG_NEEDLE = 0x0A;         // Needle detected: [MSG, needle_index]
+const byte MSG_STRING = 0x08;         // String message: [MSG, type, length, message...]
+const byte MSG_NEEDLE = 0x09;         // Needle detected: [MSG, needle_index]
 
 // Direction values
 const byte DIR_RIGHT = 0x00;
 const byte DIR_LEFT = 0x01;
+
+// String message types
+const byte STRING_INFO = 0x00;
+const byte STRING_ERROR = 0x01;
 
 
 // Pattern storage (packed: 8 needles per byte)
@@ -77,18 +80,20 @@ void checkOutSafety() {
   }
 }
 
-void sendError(const char* message) {
+void sendString(byte type, const char* message) {
   byte len = strlen(message);
-  Serial.write(MSG_ERROR);
+  Serial.write(MSG_STRING);
+  Serial.write(type);
   Serial.write(len);
   Serial.write((const uint8_t*)message, len);
 }
 
+void sendError(const char* message) {
+  sendString(STRING_ERROR, message);
+}
+
 void sendInfo(const char* message) {
-  byte len = strlen(message);
-  Serial.write(MSG_INFO);
-  Serial.write(len);
-  Serial.write((const uint8_t*)message, len);
+  sendString(STRING_INFO, message);
 }
 
 

@@ -12,13 +12,27 @@ const MSG_ACK_ROW = 0x04; // Acknowledge row data received: [MSG, length]
 const MSG_ENTER_CAMS = 0x05; // Carriage entered CAMS range
 const MSG_EXIT_CAMS = 0x06; // Carriage exited CAMS range, row complete
 const MSG_CHANGE_DIRECTION = 0x07; // Direction changed: [MSG, direction]
-const MSG_ERROR = 0x08; // Error message: [MSG, length, message...]
-const MSG_INFO = 0x09; // Info message: [MSG, length, message...]
-const MSG_NEEDLE = 0x0a; // Needle detected: [MSG, needle_index]
+const MSG_STRING = 0x08; // String message: [MSG, type, length, message...]
+const MSG_NEEDLE = 0x09; // Needle detected: [MSG, needle_index]
 
 // Direction values
 const DIR_RIGHT = 0x00;
 const DIR_LEFT = 0x01;
+
+// String message types
+const STRING_INFO = 0x00;
+const STRING_ERROR = 0x01;
+
+// Receive state machine
+enum ReceiveState {
+  IDLE,
+  WAITING_ACK_LENGTH,
+  WAITING_DIRECTION,
+  WAITING_STRING_TYPE,
+  WAITING_STRING_LENGTH,
+  WAITING_STRING_DATA,
+  WAITING_NEEDLE_INDEX,
+}
 
 let port: any = null;
 let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -28,15 +42,12 @@ let readBuffer = new Uint8Array(0);
 let textBuffer = ""; // Buffer for accumulating text from Serial.println()
 let writeInProgress = false;
 let processingRowComplete = false;
-let expectingAckLength = false; // Next byte is MSG_ACK_ROW length
-let expectingDirection = false; // Next byte is MSG_CHANGE_DIRECTION direction
-let expectingErrorLength = false; // Next byte is MSG_ERROR length
-let errorLength = 0; // Expected error message length
-let errorBuffer = ""; // Accumulated error message bytes
-let expectingInfoLength = false; // Next byte is MSG_INFO length
-let infoLength = 0; // Expected info message length
-let infoBuffer = ""; // Accumulated info message bytes
-let expectingNeedleIndex = false; // Next byte is MSG_NEEDLE index
+
+// State machine variables
+let receiveState = ReceiveState.IDLE;
+let stringType = 0; // For MSG_STRING type byte
+let expectedLength = 0; // For variable-length messages
+let messageBuffer = ""; // For accumulating message bytes
 
 // Track previous state for detecting changes
 let prevPatterning = false;
@@ -106,102 +117,86 @@ async function startReading() {
         for (let i = 0; i < value.length; i++) {
           const byte = value[i];
 
-          // Check if we're expecting a data byte from a previous message
-          if (expectingAckLength) {
-            expectingAckLength = false;
-            console.log(
-              `[PROTOCOL] Row acknowledged by device, length=${byte}`,
-            );
-            continue;
-          }
-          if (expectingDirection) {
-            expectingDirection = false;
-            const dirName = byte === DIR_LEFT ? "LEFT" : "RIGHT";
-            console.log(`[PROTOCOL] Direction changed: ${dirName}`);
-            continue;
-          }
-          if (expectingErrorLength) {
-            expectingErrorLength = false;
-            errorLength = byte;
-            errorBuffer = "";
-            continue;
-          }
-          if (errorLength > 0) {
-            // Accumulating error message bytes
-            errorBuffer += String.fromCharCode(byte);
-            if (errorBuffer.length >= errorLength) {
-              console.error(`[PROTOCOL] Error from device: ${errorBuffer}`);
-              alert(`Device Error: ${errorBuffer}`);
-              errorLength = 0;
-              errorBuffer = "";
-            }
-            continue;
-          }
-          if (expectingInfoLength) {
-            expectingInfoLength = false;
-            infoLength = byte;
-            infoBuffer = "";
-            continue;
-          }
-          if (infoLength > 0) {
-            // Accumulating info message bytes
-            infoBuffer += String.fromCharCode(byte);
-            if (infoBuffer.length >= infoLength) {
-              console.log(`[DEVICE] ${infoBuffer}`);
-              infoLength = 0;
-              infoBuffer = "";
-            }
-            continue;
-          }
-          if (expectingNeedleIndex) {
-            expectingNeedleIndex = false;
-            console.log(`[PROTOCOL] Needle: ${byte}`);
-            continue;
-          }
+          switch (receiveState) {
+            case ReceiveState.WAITING_ACK_LENGTH:
+              console.log(`[PROTOCOL] Row acknowledged by device, length=${byte}`);
+              receiveState = ReceiveState.IDLE;
+              continue;
 
-          // Check if it's a protocol message
-          if (byte === MSG_EXIT_CAMS) {
-            // Row complete message (1 byte)
-            if (!processingRowComplete) {
-              handleRowComplete();
-            }
-          } else if (byte === MSG_ACK_ROW) {
-            // Next byte will be the pattern length
-            expectingAckLength = true;
-          } else if (byte === MSG_CHANGE_DIRECTION) {
-            // Next byte will be the direction
-            expectingDirection = true;
-          } else if (byte === MSG_ENTER_CAMS) {
-            console.log("[PROTOCOL] Entered CAMS range");
-          } else if (byte === MSG_ERROR) {
-            // Next byte will be error message length
-            expectingErrorLength = true;
-          } else if (byte === MSG_INFO) {
-            // Next byte will be info message length
-            expectingInfoLength = true;
-          } else if (byte === MSG_NEEDLE) {
-            // Next byte will be needle index
-            expectingNeedleIndex = true;
-          } else if (byte === CMD_SET_ROW || byte === CMD_CLEAR_ROW) {
-            // Shouldn't receive commands from device, but handle gracefully
-            console.warn(
-              `Received command 0x${byte.toString(
-                16,
-              )} from device (unexpected)`,
-            );
-          } else {
-            // Treat as text character
-            if (byte === 0x0a || byte === 0x0d) {
-              // Newline or carriage return - log accumulated text
-              if (textBuffer.length > 0) {
-                console.log(`[ARDUINO] ${textBuffer}`);
-                textBuffer = "";
+            case ReceiveState.WAITING_DIRECTION:
+              console.log(`[PROTOCOL] Direction changed: ${byte === DIR_LEFT ? "LEFT" : "RIGHT"}`);
+              receiveState = ReceiveState.IDLE;
+              continue;
+
+            case ReceiveState.WAITING_STRING_TYPE:
+              stringType = byte;
+              receiveState = ReceiveState.WAITING_STRING_LENGTH;
+              continue;
+
+            case ReceiveState.WAITING_STRING_LENGTH:
+              expectedLength = byte;
+              messageBuffer = "";
+              receiveState = ReceiveState.WAITING_STRING_DATA;
+              continue;
+
+            case ReceiveState.WAITING_STRING_DATA:
+              messageBuffer += String.fromCharCode(byte);
+              if (messageBuffer.length >= expectedLength) {
+                if (stringType === STRING_ERROR) {
+                  console.error(`[DEVICE ERROR] ${messageBuffer}`);
+                  alert(`Device Error: ${messageBuffer}`);
+                } else {
+                  console.log(`[DEVICE] ${messageBuffer}`);
+                }
+                receiveState = ReceiveState.IDLE;
               }
-            } else if (byte >= 0x20 && byte <= 0x7e) {
-              // Printable ASCII character
-              textBuffer += String.fromCharCode(byte);
-            }
-            // Ignore other control characters
+              continue;
+
+            case ReceiveState.WAITING_NEEDLE_INDEX:
+              console.log(`[PROTOCOL] Needle: ${byte}`);
+              receiveState = ReceiveState.IDLE;
+              continue;
+
+            case ReceiveState.IDLE:
+              // Handle message type detection
+              switch (byte) {
+                case MSG_EXIT_CAMS:
+                  if (!processingRowComplete) {
+                    handleRowComplete();
+                  }
+                  break;
+                case MSG_ACK_ROW:
+                  receiveState = ReceiveState.WAITING_ACK_LENGTH;
+                  break;
+                case MSG_CHANGE_DIRECTION:
+                  receiveState = ReceiveState.WAITING_DIRECTION;
+                  break;
+                case MSG_ENTER_CAMS:
+                  console.log("[PROTOCOL] Entered CAMS range");
+                  break;
+                case MSG_STRING:
+                  receiveState = ReceiveState.WAITING_STRING_TYPE;
+                  break;
+                case MSG_NEEDLE:
+                  receiveState = ReceiveState.WAITING_NEEDLE_INDEX;
+                  break;
+                case CMD_SET_ROW:
+                case CMD_CLEAR_ROW:
+                  console.warn(`Received command 0x${byte.toString(16)} from device (unexpected)`);
+                  break;
+                default:
+                  // Treat as text character
+                  if (byte === 0x0a || byte === 0x0d) {
+                    if (textBuffer.length > 0) {
+                      console.log(`[ARDUINO] ${textBuffer}`);
+                      textBuffer = "";
+                    }
+                  } else if (byte >= 0x20 && byte <= 0x7e) {
+                    textBuffer += String.fromCharCode(byte);
+                  }
+                  break;
+              }
+              break;
           }
         }
       }
@@ -303,15 +298,10 @@ function handleDisconnect() {
   textBuffer = "";
   writeInProgress = false;
   processingRowComplete = false;
-  expectingAckLength = false;
-  expectingDirection = false;
-  expectingErrorLength = false;
-  errorLength = 0;
-  errorBuffer = "";
-  expectingInfoLength = false;
-  infoLength = 0;
-  infoBuffer = "";
-  expectingNeedleIndex = false;
+  receiveState = ReceiveState.IDLE;
+  stringType = 0;
+  expectedLength = 0;
+  messageBuffer = "";
 }
 
 async function disconnect() {
